@@ -56,6 +56,10 @@ class User():
             raise CustomHTTPException(status_code=404, message="account not found")
         if verify_password(user.password, doc[0]['password']):
             print('success')
+            self.request.session['login']={
+                'username':user.username,
+                'authority':doc[0]['authority']
+            }
             return 'success'
         else:
             raise CustomHTTPException(status_code=401, message="password not correct")
@@ -69,7 +73,11 @@ class User():
         if len(doc)!=0:
             raise CustomHTTPException(status_code=409,message="account already exists!")# try to create something that already exists
         else:
-            result=await self.usercollection.insert_one({"username":user.username,"password":get_password_hash(user.password)})
+            result=await self.usercollection.insert_one({
+                "username":user.username,
+                "password":get_password_hash(user.password),
+                'authority':"normal"
+                })
             ic(result)
             return "ok"
             

@@ -1,9 +1,15 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from models import lifespan , User
 from schemes import ResponseModel, CustomHTTPException,UserScheme
+from starlette.middleware.sessions import SessionMiddleware
+
+import os
+
+from auth import login_required
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
 
 @app.exception_handler(CustomHTTPException)
 async def custom_http_exception_handler(request: Request, exc: CustomHTTPException):
@@ -34,14 +40,18 @@ async def register(user:UserScheme,request:Request):# fastapi的endpoint名稱�
     result=await User(request).register(user)
     return ResponseModel(message=result)
 
-@app.post("/check",response_model=ResponseModel)
-async def check():
-    if 'login' in Request.session:
-        print(Request.session['login'])
-        return ResponseModel(message=Request.session['login'])
+@app.get("/check",response_model=ResponseModel)
+async def check(request:Request):
+    if 'login' in request.session:
+        print(request.session['login'])
+        return ResponseModel(message=str(request.session['login']))
     else:
         print("no")
         raise CustomHTTPException(status_code=401,message='Not Logged In')
+
+@app.get("/checkauth",response_model=ResponseModel)
+async def checkauthority(request:Request,user_session=Depends(login_required(authority="admin"))):
+    return ResponseModel(message=str(request.session['login']))
 
 
 @app.post("/api/knowledge_base")
