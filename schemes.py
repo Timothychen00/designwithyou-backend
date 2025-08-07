@@ -1,0 +1,27 @@
+from fastapi import HTTPException
+
+from typing import Any, Optional
+from pydantic import BaseModel
+
+class UserScheme(BaseModel):
+    username:str
+    password:str
+
+
+
+# Response Scheme
+
+#定義標準的回應格式
+class ResponseModel(BaseModel):
+    success: bool = True
+    status_code: int = 200 
+    message: str # 提示訊息
+    data: Optional[Any] = None #如果需要夾帶資料的話可以放這裡
+
+
+# 在原本HTTPException的基礎上加入data和code欄位
+class CustomHTTPException(HTTPException):
+    def __init__(self, code: int, message: str, status_code: int = 400, data: Any = None):
+        # super()本身只會拿到父物件，如果需要call 父親物件的constructor需要手動另外呼叫
+        super().__init__(status_code=status_code, detail=message)
+        self.data = data

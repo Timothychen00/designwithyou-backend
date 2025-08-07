@@ -1,0 +1,3 @@
+# Mongodb
+因為mongodb預設的連線方式是同步的，但是fastapi是非同步的所以需要使用motor作為driver進行使用
+
