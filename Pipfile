@@ -10,6 +10,7 @@ uvicorn = {extras = ["standard"], version = "*"}
 motor = {extras = ["srv"], version = "*"}
 passlib = {extras = ["bcrypt"], version = "*"}
 icecream = "*"
+python-dotenv = "*"
 
 [dev-packages]
 

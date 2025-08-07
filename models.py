@@ -8,6 +8,9 @@ from contextlib import asynccontextmanager
 from schemes import *
 
 from schemes import CustomHTTPException
+from dotenv import load_dotenv
+
+load_dotenv()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # 建立好context之後基本上就只有verify和has可以使用
@@ -50,12 +53,12 @@ class User():
 
         doc = await self.usercollection.find({"username": user.username}).to_list()
         if len(doc) == 0:
-            raise CustomHTTPException(status_code=404, detail="account not found")
+            raise CustomHTTPException(status_code=404, message="account not found")
         if verify_password(user.password, doc[0]['password']):
             print('success')
             return 'success'
         else:
-            raise CustomHTTPException(status_code=401, detail="password not correct")
+            raise CustomHTTPException(status_code=401, message="password not correct")
         
     
     async def logout(self):
@@ -64,10 +67,11 @@ class User():
     async def register(self, user:UserScheme):
         doc= await self.usercollection.find({'username':user.username}).to_list()# real action happens when .to_list()
         if len(doc)!=0:
-            raise CustomHTTPException(status_code=409,detail="account already exists!")# try to create something that already exists
+            raise CustomHTTPException(status_code=409,message="account already exists!")# try to create something that already exists
         else:
             result=await self.usercollection.insert_one({"username":user.username,"password":get_password_hash(user.password)})
             ic(result)
+            return "ok"
             
     
     async def forget(self):

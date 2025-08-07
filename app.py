@@ -11,7 +11,7 @@ async def custom_http_exception_handler(request: Request, exc: CustomHTTPExcepti
         status_code=exc.status_code,
         content=ResponseModel(
             success=False,
-            code=exc.code,
+            status_code=exc.status_code,
             message=exc.detail,
             data=exc.data
         ).model_dump()
