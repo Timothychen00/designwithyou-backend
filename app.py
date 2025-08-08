@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from models import lifespan , User
-from schemes import ResponseModel, CustomHTTPException,UserScheme
+from schemes import ResponseModel, CustomHTTPException,UserScheme, KnowledgeScheme
 from starlette.middleware.sessions import SessionMiddleware
 
 import os
@@ -30,9 +30,16 @@ async def root():
     user_collection.insert_one({"name":1})
     return  ResponseModel(message=db.name)
 
+# login system
+
 @app.post("/login",response_model=ResponseModel)
 async def login(user:UserScheme,request:Request):
     result=await User(request).login(user)
+    return ResponseModel(message=result)
+
+@app.post("/logout",response_model=ResponseModel)
+async def logout(request:Request):
+    result=await User(request).logout()
     return ResponseModel(message=result)
 
 @app.post("/register",response_model=ResponseModel)
@@ -54,13 +61,41 @@ async def checkauthority(request:Request,user_session=Depends(login_required(aut
     return ResponseModel(message=str(request.session['login']))
 
 
+
+#CRUD API
+
+@app.get("/api/knowledge_base")
+async def get_knowledge_base():
+    pass
+    return "1"
+
 @app.post("/api/knowledge_base")
 async def create_knowledge_base():
     pass
     return "1"
 
 
-@app.post("/api/knowledge_base/knowledge")
-async def create_knowledge():
+@app.get("/api/{main_category}/knowledge")
+async def get_knowledge(main_category:str,knowledge:KnowledgeScheme):
+    pass
+    return "1"
+
+@app.post("/api/{main_category}/knowledge")
+async def create_knowledge(main_category:str):
+    pass
+    return "1"
+
+@app.put("/api/{main_category}/knowledge")
+async def edit_knowledge(main_category:str):
+    pass
+    return "1"
+
+@app.delete("/api/{main_category}/knowledge")
+async def delete_knowledge(main_category:str):
+    pass
+    return "1"
+
+@app.get("/api/knowledge_base/knowledge")
+async def get_knowledge():
     pass
     return "1"

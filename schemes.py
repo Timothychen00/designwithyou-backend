@@ -1,13 +1,27 @@
 from fastapi import HTTPException
 
-from typing import Any, Optional
+from typing import Any, Optional, Literal
 from pydantic import BaseModel
 
 class UserScheme(BaseModel):
     username:str
     password:str
 
-
+class KnowledgeScheme(BaseModel):
+    _id:str
+    department:str
+    example_question:str
+    example_answer:str
+    
+    main_category:str
+    sub_category:str
+    tag:list[str]
+    keywords:list[str]
+    files:list[str]
+    status:Literal['solved','unsolved'] #是否被解決
+    report:str #?
+    timestamp:str
+    
 
 # Response Scheme
 

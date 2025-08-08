@@ -66,7 +66,8 @@ class User():
         
     
     async def logout(self):
-        pass
+        self.request.session.clear()
+        return "logged out!"
     
     async def register(self, user:UserScheme):
         doc= await self.usercollection.find({'username':user.username}).to_list()# real action happens when .to_list()
@@ -83,4 +84,36 @@ class User():
             
     
     async def forget(self):
+        pass
+    
+class Settings():
+    def __init__(self,request:Request):
+        db = request.app.state.db
+        self.collection = db.settings
+        
+        request.app.state.settings=self.get_settings()
+
+    async def get_settings(self ):# Request本身只是class不是物件
+        pass
+    
+    async def update_settings(self):
+        pass
+    
+    
+class KnowledgeBase():
+    def __init__(self,request:Request):
+        db = request.app.state.db
+        self.usercollection = db.user
+        self.request=request
+
+    async def get_maincategory(self ):# Request本身只是class不是物件
+        pass
+    
+    async def create_maincategory(self):
+        pass
+    
+    async def edit_maincategory(self):
+        verify_password
+    
+    async def dele_maincategory(self):
         pass
