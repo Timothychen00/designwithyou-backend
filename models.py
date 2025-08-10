@@ -21,8 +21,6 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 啟動時
@@ -36,7 +34,7 @@ async def lifespan(app: FastAPI):
     app.state.db_client = client
     app.state.db = client["main"]
     app.state.user = app.state.db.user
-
+    app.state.data_settings=Settings()
     yield  # 這裡是應用程式運行的階段
     #有yield就可以用內建函數next分次執行函數
     # 關閉時
@@ -87,33 +85,54 @@ class User():
         pass
     
 class Settings():
-    def __init__(self,request:Request):
+    async def __init__(self,request:Request):
         db = request.app.state.db
         self.collection = db.settings
-        
-        request.app.state.settings=self.get_settings()
+        self.data={}    
 
     async def get_settings(self ):# Request本身只是class不是物件
-        pass
+        result= await self.collection.find({"type":"settings"}).to_list()
+        if len(result)==0:
+            simple_settings={
+                "type":"settings",
+                "category":{
+                    
+                }
+                }
+            
+            self.collection.insert_one({"type":"settings"})
+            self.data=simple_settings
+        else:
+            self.data=result[0]
+            
     
-    async def update_settings(self):
-        pass
-    
+    async def update_settings(self,data:dict):
+        result=await self.collection.update_one({"type":"settings"},{"$set":data})
+        return result
+
     
 class KnowledgeBase():
     def __init__(self,request:Request):
         db = request.app.state.db
-        self.usercollection = db.user
+        self.collection = db.settings
         self.request=request
+        self.data_settings=self.request.app.state.data_settings
 
-    async def get_maincategory(self ):# Request本身只是class不是物件
+    async def get_maincategory(self,category:str):# Request本身只是class不是物件
         pass
     
-    async def create_maincategory(self):
-        pass
+    async def create_maincategory(self,main_category:str,subcategory:str):
+        if main_category not in self.data_settings.data['category']:
+            self.data_settings.data['category'][main_category]=subcategory
+            self.data_settings.update()
+            return 'success'
+        else:
+            raise CustomHTTPException(message="already exist!",status_code=409)
+            
+        
     
     async def edit_maincategory(self):
         verify_password
     
-    async def dele_maincategory(self):
+    async def delete_maincategory(self):
         pass
