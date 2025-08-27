@@ -1,11 +1,14 @@
 from fastapi import HTTPException
 
 from typing import Any, Optional, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel,EmailStr
 
 class UserScheme(BaseModel):
     username:str
     password:str
+    authority:Literal['normal','owner','admin']
+    company:Optional[str]=""
+    token:Optional[str]=None # permittion to create a admin account
 
 class KnowledgeScheme(BaseModel):
     _id:str
@@ -22,6 +25,18 @@ class KnowledgeScheme(BaseModel):
     report:str #?
     timestamp:str
     
+class ContactPerson(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    
+class CompanyScheme(BaseModel):
+    company_name: str
+    company_type: str
+    company_unicode: str  # 統編
+    company_property: list[str]
+    contact_person: ContactPerson
+    company_description: Optional[str] = ""
 
 # Response Scheme
 

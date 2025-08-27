@@ -1,15 +1,27 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
-from models import lifespan , User
+from models import lifespan, User, Settings
 from schemes import ResponseModel, CustomHTTPException,UserScheme, KnowledgeScheme
 from starlette.middleware.sessions import SessionMiddleware
 
 import os
+import asyncio
 
 from auth import login_required
+from errors import UserError, SettingsError,CompanyError
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
+
+@app.exception_handler(UserError)
+@app.exception_handler(SettingsError)
+@app.exception_handler(CompanyError)
+async def domain_exception_handler(request: Request, exc: Exception):
+    # domain error → 一律 400
+    return JSONResponse(
+        status_code=400,
+        content={"detail": str(exc)}
+    )
 
 @app.exception_handler(CustomHTTPException)
 async def custom_http_exception_handler(request: Request, exc: CustomHTTPException):
@@ -25,10 +37,29 @@ async def custom_http_exception_handler(request: Request, exc: CustomHTTPExcepti
 
 @app.get("/",response_model=ResponseModel)
 async def root():
-    db= app.state.db
-    user_collection=db.user
-    user_collection.insert_one({"name":1})
-    return  ResponseModel(message=db.name)
+    db = app.state.db
+    user_collection = db.user
+    # await user_collection.insert_one({"name": 1})
+    return ResponseModel(message=db.name)
+
+# 同步的檢查
+@app.get("/healthz")
+async def healthz(request: Request):
+    cache = request.app.state.cache
+    return {
+        "ready": cache.ready.is_set(),
+        "last_error": cache.last_error,
+    }
+
+
+
+
+@app.post("/settings")
+async def settings_endpoint(request:Request):
+    result = await Settings(request).get_settings()
+    return ResponseModel(message=str(result))
+
+
 
 # login system
 
