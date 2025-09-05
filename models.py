@@ -8,11 +8,11 @@ import os
 import asyncio
 import anyio    #async corotine的lock
 from contextlib import asynccontextmanager
-from schemes import *
-
-from schemes import CustomHTTPException
-from errors import UserError,SettingsError,CompanyError
 from dotenv import load_dotenv
+
+from schemes import *
+from errors import UserError,SettingsError,CompanyError,BadInputError
+from tools import token_generator
 
 load_dotenv()
 
@@ -49,14 +49,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-
 class User():
     def __init__(self,request:Request):
         db = request.app.state.db
         self.usercollection = db.user
         self.request=request
 
-    async def login(self, user: UserScheme):# Request本身只是class不是物件
+    async def login(self, user: UserLoginScheme):# Request本身只是class不是物件
 
         doc = await self.usercollection.find({"username": user.username}).to_list()
         if len(doc) == 0:
@@ -65,7 +64,8 @@ class User():
             print('success')
             self.request.session['login']={
                 'username':user.username,
-                'authority':doc[0]['authority']
+                'authority':doc[0]['authority'],
+                "company_id":doc[0]['company'],
             }
             return 'success'
         else:
@@ -76,26 +76,36 @@ class User():
         self.request.session.clear()
         return "logged out!"
     
-    async def register(self, user:UserScheme):
+    async def register(self, user:UserRegisterScheme):
         doc= await self.usercollection.find({'username':user.username}).to_list()# real action happens when .to_list()
         if len(doc)!=0:
             raise CustomHTTPException(status_code=409,message="account already exists!")# try to create something that already exists
         else:
             if user.authority in ('admin', 'owner'):
+                
+                # 之後看還有沒有需要
                 if user.token and os.environ.get("ADMIN_TOKEN") and user.token == os.environ.get("ADMIN_TOKEN"):
-
-                    company_id = await Company(self.request).create_empty_company(created_by=user.username)
-
+                    
+                    if not user.company:
+                        company_id = await Company(self.request).create_empty_company(created_by=user.username)
+                    else:
+                        company_id=user.company
                     data = {
                         "username": user.username,
                         "password": get_password_hash(user.password),
                         "authority": user.authority,
+                        "name":user.name,
                         "company": company_id,
+                        "phone": user.phone,
+                        "role": user.role,
+                        "note":user.note
                     }
+                    
+                    
                     try:
                         result = await self.usercollection.insert_one(data)
                         ic(result)
-                        return "ok"
+                        return result.inserted_id
                     except Exception as e:
                         # compensation: remove the created company to avoid orphaned doc
                         try:
@@ -107,14 +117,28 @@ class User():
                     raise UserError("permission denied")
             else:
                 # normal create
+                data = {
+                        "username": user.username,
+                        "password": get_password_hash(user.password),
+                        "authority": user.authority,
+                        "name":user.name,
+                        "company": user.company,
+                        "phone": user.phone,
+                        "role": user.role,
+                        "note":user.note
+                }
                 result=await self.usercollection.insert_one(data)
                 ic(result)
-                return "ok"
-            
+                return result.inserted_id
+    
+    async def register_many(self,data:list[UserRegisterScheme]):
+        pass
     
     async def forget(self):
         pass
     
+    async def delete(self, filter:dict):
+        self.usercollection.delete(filter)
 
 
     
@@ -163,24 +187,35 @@ class KnowledgeBase():
     def __init__(self,request:Request):
         db = request.app.state.db
         self.collection = db.settings
+        self.company = ""
         self.request=request
-        self.data_settings=self.request.app.state.data_settings
-
-    async def get_maincategory(self,category:str):# Request本身只是class不是物件
-        pass
-    
-    async def create_maincategory(self,main_category:str,subcategory:str):
-        if main_category not in self.data_settings.data['category']:
-            self.data_settings.data['category'][main_category]=subcategory
-            self.data_settings.update()
-            return 'success'
+        
+        if 'login' in self.request.session:
+            self.company=self.request.session.get('company','')
+            if self.company=='':
+                raise SettingsError("No Company data")
         else:
-            raise CustomHTTPException(message="already exist!",status_code=409)
             
+            raise SettingsError("Not logged in")
+        
+
+    async def get_maincategory(self):# Request本身只是class不是物件
+        current_settings=Settings(self.request)
+        result = await current_settings.get_settings()
+        return result
+    
+    async def set_maincategory(self,data:MainCategories):
+        current_settings=Settings(self.request)
+        doc=await Settings.get_settings()
+        doc['category']=data
+        result = await current_settings.update_settings(doc)
+        return result
+        
         
     
     async def edit_maincategory(self):
-        verify_password
+        # verify_password
+        pass
     
     async def delete_maincategory(self):
         pass
@@ -205,13 +240,60 @@ class Company():
             },
             "company_description": "",
             "created_by": created_by,
-            "status": "draft",
+            "company_scale":"",#50~100
+            "department_count":"",# 部門數量
+            "language":"zh"
         }
         result = await self.collection.insert_one(file)
         return str(result.inserted_id)
 
-    async def get_company(self,):# Request本身只是class不是物件
-        pass
+    async def get_company(self,company_id):# Request本身只是class不是物件
+        oid=ObjectId(company_id)
+        result = await self.collection.find_one({"_id":oid})
+        return result
+    
+    async def setup_company_structure(self,company_id:str,departments):
+        
+        # 要補之後針對departments的資料格式進行篩選
+        
+        
+        # create accoutns
+        temp_users=[]
+        temp_user_ids=[]
+        
+        try:
+            for department in departments:
+                
+                temp_user=UserRegisterScheme(
+                    name=department['person']['name'],
+                    password=token_generator(24),
+                    username=department['person']['username'],
+                    company_id=company_id
+                )
+                temp_users.append(temp_user)
+                id = User().register(temp_user)
+                temp_user_ids.append(id)
+                
+                department['person']=id # 直接用id作軟性連結
+
+        
+
+            # send email
+            ic(temp_users)
+            ic(temp_user_ids)
+            
+            # process data
+            departments_data={}
+            departments_data['departments']=departments
+            ic(departments_data)
+            
+            await self.edit_company(company_id,departments_data)
+            return "ok"
+        except Exception as e:
+            for id in temp_user_ids:
+                User().delete({"_id":id})
+            raise CompanyError(str(e))
+    
     
     async def create_company(self,data:CompanyScheme):
         file={
@@ -224,7 +306,10 @@ class Company():
                 "email":data.contact_person.email,
                 "phone":data.contact_person.phone
                 },
-            "company_description":""
+            "company_description":"",
+            "company_scale":"",#50~100
+            "department_count":0,# 部門數量
+            "language":"zh",
         }
         result=await self.collection.insert_one(file)
         return str(result.inserted_id)
@@ -232,10 +317,10 @@ class Company():
     
     async def edit_company(self, company_id: str, data: dict):
         # Validate ObjectId
-        try:
-            oid = ObjectId(company_id)
-        except Exception:
-            raise CompanyError("invalid company id")
+        # try:
+        oid = ObjectId(company_id)
+        # except Exception:
+        #     raise CompanyError("invalid company id")
 
         # Whitelist allowed fields
         allowed_keys = {
@@ -244,9 +329,10 @@ class Company():
             "company_unicode",
             "company_property",
             "contact_person",
+            "company_scale",
             "company_description",
         }
-        update_data = {k: v for k, v in (data or {}).items() if k in allowed_keys}
+        update_data = {k: v for k, v in (data or {}).model_dump(exclude_unset=True).items() if k in allowed_keys}
         if not update_data:
             raise CompanyError("no valid fields to update")
 
@@ -257,10 +343,10 @@ class Company():
     
     async def delete_company(self, company_id: str):
         """Delete a company document by its string id."""
-        try:
-            oid = ObjectId(company_id)
-        except Exception:
-            raise CompanyError("invalid company id")
+        # try:
+        oid = ObjectId(company_id)
+        # except Exception:
+        #     raise CompanyError("invalid company id")
 
         result = await self.collection.delete_one({"_id": oid})
         if result.deleted_count == 0:

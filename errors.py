@@ -7,4 +7,7 @@ class UserError(Exception):
 class CompanyError(Exception):
     pass
 
+class BadInputError(Exception):
+    pass
+
 # each Error Bounding for Each Class in model 
