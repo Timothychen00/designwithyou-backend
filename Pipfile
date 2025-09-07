@@ -11,6 +11,8 @@ motor = {extras = ["srv"], version = "*"}
 passlib = {extras = ["bcrypt"], version = "*"}
 icecream = "*"
 python-dotenv = "*"
+bson = "*"
+pydantic = {extras = ["email"], version = "*"}
 
 [dev-packages]
 
