@@ -26,8 +26,6 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 啟動時
@@ -79,6 +77,8 @@ class User():
     async def register(self, user:UserRegisterScheme):
         doc= await self.usercollection.find({'username':user.username}).to_list()# real action happens when .to_list()
         if len(doc)!=0:
+            ic(user.username)
+            ic(doc)
             raise CustomHTTPException(status_code=409,message="account already exists!")# try to create something that already exists
         else:
             if user.authority in ('admin', 'owner'):
@@ -138,7 +138,7 @@ class User():
         pass
     
     async def delete(self, filter:dict):
-        self.usercollection.delete(filter)
+        self.usercollection.delete_many(filter) #delete_many 可以適用一個或是多個
 
 
     
@@ -242,7 +242,8 @@ class Company():
             "created_by": created_by,
             "company_scale":"",#50~100
             "department_count":"",# 部門數量
-            "language":"zh"
+            "language":"zh",
+            "departments":{}
         }
         result = await self.collection.insert_one(file)
         return str(result.inserted_id)
@@ -252,47 +253,52 @@ class Company():
         result = await self.collection.find_one({"_id":oid})
         return result
     
-    async def setup_company_structure(self,company_id:str,departments):
-        
+    async def setup_company_structure(self,company_id:str,departments:CompanyStructureSetupScheme):
         # 要補之後針對departments的資料格式進行篩選
-        
         
         # create accoutns
         temp_users=[]
         temp_user_ids=[]
-        
+        db_departments = [] #map into db format
         try:
-            for department in departments:
-                
-                temp_user=UserRegisterScheme(
-                    name=department['person']['name'],
-                    password=token_generator(24),
-                    username=department['person']['username'],
+            
+            for dep in departments.departments:
+                temp_user= UserRegisterScheme( #所有的付值都需要await嗎
+                    name=dep.person_in_charge.name,
+                    password=token_generator(12),
+                    username=dep.person_in_charge.email,
                     company_id=company_id
                 )
-                temp_users.append(temp_user)
-                id = User().register(temp_user)
-                temp_user_ids.append(id)
                 
-                department['person']=id # 直接用id作軟性連結
-
-        
+                user_id = await User(self.request).register(temp_user)
+                temp_user_ids.append(user_id)
+                db_departments.append({
+                    "department_name": dep.department_name,
+                    "parent_department": dep.parent_department,
+                    "role": dep.role,
+                    "person_in_charge_id": str(user_id),  # 注意轉成 str，避免 BSON 泄漏到前端
+                })
 
             # send email
             ic(temp_users)
             ic(temp_user_ids)
             
-            # process data
-            departments_data={}
-            departments_data['departments']=departments
-            ic(departments_data)
+            ic(db_departments)
             
-            await self.edit_company(company_id,departments_data)
+            await self.edit_company(company_id, {"departments": db_departments})
             return "ok"
         except Exception as e:
             for id in temp_user_ids:
-                User().delete({"_id":id})
+                await User(self.request).delete({"_id":id})
             raise CompanyError(str(e))
+    
+    async def get_company_departmentlist(self,company_id:str):
+        oid=ObjectId(company_id)
+        result = await self.collection.find_one({"_id":oid})
+        if not result:
+            raise BadInputError("Company not found ")
+        
+        return list(result['departments'].keys())
     
     
     async def create_company(self,data:CompanyScheme):
@@ -310,6 +316,7 @@ class Company():
             "company_scale":"",#50~100
             "department_count":0,# 部門數量
             "language":"zh",
+            "departments":{}
         }
         result=await self.collection.insert_one(file)
         return str(result.inserted_id)
@@ -331,8 +338,13 @@ class Company():
             "contact_person",
             "company_scale",
             "company_description",
+            "departments"
         }
-        update_data = {k: v for k, v in (data or {}).model_dump(exclude_unset=True).items() if k in allowed_keys}
+        ic(2)
+        if not isinstance(data,dict):
+            data=data.model_dump(exclude_unset=True)
+        update_data = {k: v for k, v in (data or {}).items() if k in allowed_keys}
+        ic(1)
         if not update_data:
             raise CompanyError("no valid fields to update")
 
@@ -352,3 +364,4 @@ class Company():
         if result.deleted_count == 0:
             raise CompanyError("company not found")
         return "ok"
+

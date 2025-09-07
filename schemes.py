@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 
 from typing import Any, Optional, Literal
-from pydantic import BaseModel,EmailStr, field_serializer
+from pydantic import BaseModel,EmailStr, field_serializer,Field,ConfigDict
 
 from tools import bson_to_jsonable
 
@@ -9,7 +9,7 @@ class UserRegisterScheme(BaseModel):
     username:EmailStr # account=email
     password:str
     name:Optional[str]=""
-    authority:Literal['normal','owner','admin']
+    authority:Literal['normal','owner','admin']='normal'
     company:Optional[str]=""
     phone:Optional[str]=""
     role:Optional[str]="" # 角色 
@@ -39,7 +39,7 @@ class KnowledgeScheme(BaseModel):
 class ContactPerson(BaseModel):
     name: str
     email: EmailStr
-    phone: str
+    phone: Optional[str]=""
     
 class MainCategoryConfig(BaseModel):
     description: list[str]
@@ -48,20 +48,27 @@ class MainCategoryConfig(BaseModel):
 
 class MainCategories(BaseModel):
     # 僅這些 key 合法；沒出現在這裡的 key 會被直接擋掉
-    品質管理: Optional[MainCategoryConfig] = None
-    倉儲管理: Optional[MainCategoryConfig] = None
-    生產管理: Optional[MainCategoryConfig] = None
-    客戶服務: Optional[MainCategoryConfig] = None
-    採購管理: Optional[MainCategoryConfig] = None
-    設備維護: Optional[MainCategoryConfig] = None
-    能源管理: Optional[MainCategoryConfig] = None
-    物流與配送: Optional[MainCategoryConfig] = None
-    研發與創新: Optional[MainCategoryConfig] = None
-    財務管理: Optional[MainCategoryConfig] = None
-    人力資源: Optional[MainCategoryConfig] = None
-    數據安全與治理: Optional[MainCategoryConfig] = None
+    # 內部以英文欄位名維護；對外用中文 key（alias）收/回資料。
+    # 只允許下列欄位（extra='forbid'），未列出的 key 會被擋掉。
+    quality_management: Optional[MainCategoryConfig] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
+    warehouse_management: Optional[MainCategoryConfig] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理"    )
+    production_management: Optional[MainCategoryConfig] = Field(None, validation_alias="生產管理", serialization_alias="生產管理"    )
+    customer_service: Optional[MainCategoryConfig] = Field(None, validation_alias="客戶服務", serialization_alias="客戶服務"    )
+    procurement_management: Optional[MainCategoryConfig] = Field(None, validation_alias="採購管理", serialization_alias="採購管理"    )
+    equipment_maintenance: Optional[MainCategoryConfig] = Field(None, validation_alias="設備維護", serialization_alias="設備維護"    )
+    energy_management: Optional[MainCategoryConfig] = Field(None, validation_alias="能源管理", serialization_alias="能源管理"    )
+    logistics_and_distribution: Optional[MainCategoryConfig] = Field(None, validation_alias="物流與配送", serialization_alias="物流與配送"    )
+    r_n_d_innovation: Optional[MainCategoryConfig] = Field(None, validation_alias="研發與創新", serialization_alias="研發與創新"    )
+    financial_management: Optional[MainCategoryConfig] = Field(None, validation_alias="財務管理", serialization_alias="財務管理"    )
+    human_resources: Optional[MainCategoryConfig] = Field(None, validation_alias="人力資源", serialization_alias="人力資源"    )
+    data_security_and_governance: Optional[MainCategoryConfig] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理"    )
     
     
+# extra='forbid'
+# 控制「額外 key」的處理方式。
+# Pydantic 預設是 extra='ignore'（沒定義的 key 會被丟掉），
+# 你這裡改成 forbid → 沒定義的 key 會直接報錯
+
 class CompanyScheme(BaseModel):
     company_name: str
     company_type: str
@@ -72,6 +79,24 @@ class CompanyScheme(BaseModel):
     company_scale:str="",#50~100
     department_count:int
     language:str="zh"
+
+class CompanyStructureListItem(BaseModel):
+    department_name: str
+    parent_department: str
+    role: str  # 職責描述
+    person_in_charge: ContactPerson
+
+class CompanyStructureListItemDB(BaseModel):
+    department_name: str
+    parent_department: str
+    role: str  # 職責描述
+    person_in_charge_id: str
+
+
+class CompanyStructureSetupScheme(BaseModel):
+    departments:list[CompanyStructureListItem]
+    
+
 
 # Response Scheme
 

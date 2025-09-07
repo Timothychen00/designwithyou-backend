@@ -137,3 +137,83 @@ curl -X GET http://localhost:8000/checkauth \
 └── readme.md        # 說明文件
 ```
 
+
+## 測試資料
+- /api/company/setup_company_structure
+  - 
+    ```json
+  {
+  "departments": [
+    {
+      "department_name": "總部",
+      "parent_department": "無",
+      "role": "-",
+      "person_in_charge": {
+        "name": "蔡寒寒",
+        "email": "cai.hanhan@example.com",
+        "phone": ""
+      }
+    },
+    {
+      "department_name": "營運部",
+      "parent_department": "總部",
+      "role": "負責門市營運與績效管理",
+      "person_in_charge": {
+        "name": "王小明",
+        "email": "wang.xiaoming@example.com",
+        "phone": ""
+      }
+    },
+    {
+      "department_name": "客戶服務中心",
+      "parent_department": "總部",
+      "role": "統一處理消費者客服與回饋",
+      "person_in_charge": {
+        "name": "陳敏萱",
+        "email": "chen.minxuan@example.com",
+        "phone": ""
+      }
+    },
+    {
+      "department_name": "商品部",
+      "parent_department": "營運部",
+      "role": "商品企劃、品牌與供應商管理",
+      "person_in_charge": {
+        "name": "郭琳林",
+        "email": "guo.linlin@example.com",
+        "phone": ""
+      }
+    },
+    {
+      "department_name": "採購部",
+      "parent_department": "營運部",
+      "role": "負責與品牌商洽談與採購管理",
+      "person_in_charge": {
+        "name": "文品文",
+        "email": "wen.pinwen@example.com",
+        "phone": ""
+      }
+    },
+    {
+      "department_name": "人力資源部",
+      "parent_department": "總部",
+      "role": "人才招募、教育訓練與組織發展",
+      "person_in_charge": {
+        "name": "陳大大",
+        "email": "chen.dada@example.com",
+        "phone": ""
+      }
+    },
+    {
+      "department_name": "行銷企劃部",
+      "parent_department": "總部",
+      "role": "廣告促銷、社群經營與活動企劃",
+      "person_in_charge": {
+         "name": "林木森",
+        "email": "lin.musen@example.com"
+
+      }
+    }
+  ]
+}
+        ```

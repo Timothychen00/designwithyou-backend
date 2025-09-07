@@ -1,18 +1,19 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from models import lifespan, User, Settings
-from schemes import ResponseModel, CustomHTTPException, UserLoginScheme, KnowledgeScheme, CompanyScheme, UserRegisterScheme
+from schemes import ResponseModel, CustomHTTPException, UserLoginScheme, KnowledgeScheme, CompanyScheme, UserRegisterScheme,CompanyStructureSetupScheme
 from starlette.middleware.sessions import SessionMiddleware
 
 import os
 import asyncio
 
 from auth import login_required
-from errors import UserError, SettingsError,CompanyError
+from errors import UserError, SettingsError,CompanyError,BadInputError
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
 
+@app.exception_handler(BadInputError)
 @app.exception_handler(UserError)
 @app.exception_handler(SettingsError)
 @app.exception_handler(CompanyError)
@@ -157,22 +158,30 @@ async def create_company(request: Request, payload: CompanyScheme = None,user_se
     
 
 @app.put("/api/company")
-async def edit_company(request: Request, company_id: str, data: CompanyScheme):
+async def edit_company(request: Request, company_id: str, data: CompanyScheme,user_session=Depends(login_required(authority="admin"))):
     svc = Company(request)
     result = await svc.edit_company(company_id, data)
     return ResponseModel(message="updated", data={"status": result})
 
-@app.delete("/api/company")
-async def delete_company(request: Request, company_id: str ):
+@app.delete("/api/company")#記得要改使用者那邊
+async def delete_company(request: Request, company_id: str ,user_session=Depends(login_required(authority="admin"))):
     svc = Company(request)
     result = await svc.delete_company(company_id)
     return ResponseModel(message="deleted", data={"status": result})
 
-# @app.get("/api/company/setup_company_structure")
-# async def setup_company_structure(
-#     request: Request,
-#     company_id: str = Query(..., description="Company id (string ObjectId)"),
-#     departments: str = Query(..., description="JSON-encoded array of departments")
-# ):
-#     pass
 
+@app.post("/api/company/setup_company_structure")
+async def setup_company_structure(request: Request,company_id: str ,departments:CompanyStructureSetupScheme ):
+    svc = Company(request)
+    result = await svc.setup_company_structure(company_id,departments)
+    return ResponseModel(message="ok", data=result)
+
+@app.get("/api/company/department")#記得要改使用者那邊
+async def get_departments(request: Request, company_id: str ,user_session=Depends(login_required(authority="admin"))):
+    svc = Company(request)
+    result = await svc.get_company_departmentlist(company_id)
+    return ResponseModel(message="ok", data=result)
+
+
+
+# 留stage api讓前端追蹤註冊的進度到哪裡了
