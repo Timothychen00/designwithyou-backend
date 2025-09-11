@@ -1,5 +1,8 @@
 from fastapi import HTTPException
 
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
 from typing import Any, Optional, Literal
 from pydantic import BaseModel,EmailStr, field_serializer,Field,ConfigDict
 
@@ -15,41 +18,51 @@ class UserRegisterScheme(BaseModel):
     role:Optional[str]="" # 角色 
     token:Optional[str]=None # permittion to create a admin account
     note:Optional[str]=""
+    department:str=""
     
 class UserLoginScheme(BaseModel):
     username:EmailStr # account=email
     password:str
-    
 
-class KnowledgeScheme(BaseModel):
+class KnowledgeSchemeCreate(BaseModel):
     _id:str
-    department:str
-    example_question:str
-    example_answer:str
+    department:list[str]
+    keywords:list[str]=[]
+    tag:list[str] =[]
     
-    main_category:str
-    sub_category:str
-    tag:list[str]
-    keywords:list[str]
-    files:list[str]
-    status:Literal['solved','unsolved'] #是否被解決
+    example_question:str
+    example_answer:str = ""
+    
+    main_category:str 
+    sub_category:str 
+
+    files:list[str] = []
+    status:Literal['solved','unsolved']="unsolved" #是否被解決 
     report:str #?
-    timestamp:str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_serializer("timestamp")
+    def _serialize_timestamp(self, v: datetime):
+        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
     
 class ContactPerson(BaseModel):
     name: str
     email: EmailStr
-    phone: Optional[str]=""
+    phone: Optional[str] = ""
     
 class MainCategoryConfig(BaseModel):
-    description: list[str]
-    sub: list[str]
-    access: list[str]
+    description: list[str] = []
+    sub: list[str] = []
+    access: list[str] = []
+    status: bool
 
-class MainCategories(BaseModel):
+class MainCategoriesCreate(BaseModel):
     # 僅這些 key 合法；沒出現在這裡的 key 會被直接擋掉
     # 內部以英文欄位名維護；對外用中文 key（alias）收/回資料。
     # 只允許下列欄位（extra='forbid'），未列出的 key 會被擋掉。
+    company_description:str = ""
+    
     quality_management: Optional[MainCategoryConfig] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
     warehouse_management: Optional[MainCategoryConfig] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理"    )
     production_management: Optional[MainCategoryConfig] = Field(None, validation_alias="生產管理", serialization_alias="生產管理"    )
@@ -62,20 +75,19 @@ class MainCategories(BaseModel):
     financial_management: Optional[MainCategoryConfig] = Field(None, validation_alias="財務管理", serialization_alias="財務管理"    )
     human_resources: Optional[MainCategoryConfig] = Field(None, validation_alias="人力資源", serialization_alias="人力資源"    )
     data_security_and_governance: Optional[MainCategoryConfig] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理"    )
-    
-    
-# extra='forbid'
-# 控制「額外 key」的處理方式。
-# Pydantic 預設是 extra='ignore'（沒定義的 key 會被丟掉），
-# 你這裡改成 forbid → 沒定義的 key 會直接報錯
+    # extra='forbid'
+    # 控制「額外 key」的處理方式。
+    # Pydantic 預設是 extra='ignore'（沒定義的 key 會被丟掉），
+    # 你這裡改成 forbid → 沒定義的 key 會直接報錯
+
 
 class CompanyScheme(BaseModel):
     company_name: str
-    company_type: str
+    company_type: list[str]
     company_unicode: str  # 統編
     company_property: list[str]
     contact_person: ContactPerson
-    company_description: Optional[str] = ""
+    company_description: Optional[str] = ""   # 產業型態
     company_scale:str="",#50~100
     department_count:int
     language:str="zh"
@@ -93,10 +105,6 @@ class CompanyStructureListItemDB(BaseModel):
     person_in_charge_id: str
 
 
-class CompanyStructureSetupScheme(BaseModel):
-    departments:list[CompanyStructureListItem]
-    
-
 
 # Response Scheme
 
@@ -110,6 +118,24 @@ class ResponseModel(BaseModel):
     @field_serializer('data') # 針對data這個欄位進行客製化的serialize，解決bson會出現的問題
     def serialize_data(self, v):
         return bson_to_jsonable(v)  # 低迴進行控制
+    
+class CompanyStructureSetupScheme(BaseModel):
+    departments:list[CompanyStructureListItem]
+    
+class DispenseDepartment(BaseModel):
+    quality_management: Optional[list[str]] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
+    warehouse_management: Optional[list[str]] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理")
+    production_management: Optional[list[str]] = Field(None, validation_alias="生產管理", serialization_alias="生產管理")
+    customer_service: Optional[list[str]] = Field(None, validation_alias="客戶服務", serialization_alias="客戶服務")
+    procurement_management: Optional[list[str]] = Field(None, validation_alias="採購管理", serialization_alias="採購管理")
+    equipment_maintenance: Optional[list[str]] = Field(None, validation_alias="設備維護", serialization_alias="設備維護")
+    energy_management: Optional[list[str]] = Field(None, validation_alias="能源管理", serialization_alias="能源管理")
+    logistics_and_distribution: Optional[list[str]] = Field(None, validation_alias="物流與配送", serialization_alias="物流與配送")
+    r_n_d_innovation: Optional[list[str]] = Field(None, validation_alias="研發與創新", serialization_alias="研發與創新")
+    financial_management: Optional[list[str]] = Field(None, validation_alias="財務管理", serialization_alias="財務管理")
+    human_resources: Optional[list[str]] = Field(None, validation_alias="人力資源", serialization_alias="人力資源")
+    data_security_and_governance: Optional[list[str]] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理")
+
 
 # 在原本HTTPException的基礎上加入data和code欄位
 class CustomHTTPException(HTTPException):
@@ -118,3 +144,36 @@ class CustomHTTPException(HTTPException):
         super().__init__(status_code=status_code, detail=message)
         self.data = data
         
+        
+class  QuestionReponse(BaseModel):
+    response:str
+
+class ChatRecordCreate(BaseModel):
+    ask: str
+    answer: str
+    user: str
+    status:Literal['normal','suggest-solved','suggest-unsolved']
+    reponse:QuestionReponse=""
+    # Store as timezone-aware UTC datetime; auto-fill on creation
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_serializer("timestamp")
+    def _serialize_timestamp(self, v: datetime):
+        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
+    
+    
+class ChatRecordEdit(BaseModel):
+    ask: str =""
+    answer: str =""
+    user: str=""
+    status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
+    reponse:QuestionReponse=""
+    # Store as timezone-aware UTC datetime; auto-fill on creation
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_serializer("timestamp")
+    def _serialize_timestamp(self, v: datetime):
+        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
+    

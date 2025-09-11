@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
-from models import lifespan, User, Settings
-from schemes import ResponseModel, CustomHTTPException, UserLoginScheme, KnowledgeScheme, CompanyScheme, UserRegisterScheme,CompanyStructureSetupScheme
+from models import lifespan, User, Settings,KnowledgeBase,Chat
+from schemes import ResponseModel, CustomHTTPException, UserLoginScheme, KnowledgeSchemeCreate, CompanyScheme, UserRegisterScheme,CompanyStructureSetupScheme,MainCategoriesCreate,DispenseDepartment
 from starlette.middleware.sessions import SessionMiddleware
+from icecream import ic
 
 import os
 import asyncio
@@ -103,35 +104,43 @@ async def get_knowledge_base():
     return "1"
 
 @app.post("/api/knowledge_base")
-async def create_knowledge_base():
-    pass
-    return "1"
+async def create_knowledge_base(request: Request ,main_category:MainCategoriesCreate,user_session=Depends(login_required(authority="admin"))):
+    '''
+    Step3
+    '''
+    company_id=user_session['company_id']
+    ic(company_id)
+    result={}
+    result['category']=await KnowledgeBase(request).create_maincategory(main_category)
+    result['company_description']=await Company(request).edit_company(company_id,{"company_description":main_category.company_description})
+    return ResponseModel(message="ok", data=result)
 
 
-@app.get("/api/{main_category}/knowledge")
-async def get_knowledge(main_category:str,knowledge:KnowledgeScheme):
-    pass
-    return "1"
+@app.post("/api/knowledge_base/department_authority")
+async def dispense_department(request:Request,data:DispenseDepartment):
+    result = await KnowledgeBase(request).dispense_department(data)
+    return ResponseModel(message="ok", data=result)
 
-@app.post("/api/{main_category}/knowledge")
-async def create_knowledge(main_category:str):
-    pass
-    return "1"
 
-@app.put("/api/{main_category}/knowledge")
-async def edit_knowledge(main_category:str):
-    pass
-    return "1"
+@app.post("/api/knowledge_base/knowledge")
+async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
+    username = user_session.username
+    user_profile = await User().get_user({"username":username}) # company_id
+    # department
+    # 
+    
+    data.department = user_profile['department']
+    
+    # main_category
+    # sub_category
+    
+    result = await KnowledgeBase(request).create_knowledge(data)
+    return ResponseModel(message="ok", data=result)
 
-@app.delete("/api/{main_category}/knowledge")
-async def delete_knowledge(main_category:str):
-    pass
-    return "1"
+@app.post('/api/knowledge_base/chat')
+async def chat():
+    Chat().create_chat_record()
 
-@app.get("/api/knowledge_base/knowledge")
-async def get_knowledge():
-    pass
-    return "1"
 
 # company
 from fastapi import Query, Body

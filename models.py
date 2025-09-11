@@ -98,7 +98,8 @@ class User():
                         "company": company_id,
                         "phone": user.phone,
                         "role": user.role,
-                        "note":user.note
+                        "note":user.note,
+                        "department":user.department
                     }
                     
                     
@@ -125,7 +126,8 @@ class User():
                         "company": user.company,
                         "phone": user.phone,
                         "role": user.role,
-                        "note":user.note
+                        "note":user.note,
+                        "department":user.department
                 }
                 result=await self.usercollection.insert_one(data)
                 ic(result)
@@ -137,10 +139,12 @@ class User():
     async def forget(self):
         pass
     
+    async def get_user(self,filter:dict):
+        return await self.usercollection.find_one(filter)
+    
     async def delete(self, filter:dict):
-        self.usercollection.delete_many(filter) #delete_many 可以適用一個或是多個
-
-
+        await self.usercollection.delete_many(filter) #delete_many 可以適用一個或是多個
+        # 為什麼這裡需要await
     
 class Settings():
     def __init__(self,request:Request):# init function 不能是async
@@ -151,7 +155,9 @@ class Settings():
         self.request=request
         
         if 'login' in self.request.session:
-            self.company=self.request.session.get('company','')
+            ic('login')
+            self.company=self.request.session['login'].get('company_id','')
+            ic(self.company)
             if self.company=='':
                 raise SettingsError("No Company data")
         else:
@@ -165,7 +171,7 @@ class Settings():
         result= await self.collection.find({"type":"settings","company":self.company}).to_list()
         if len(result)==0:
             simple_settings={
-                "company":"",
+                "company":self.company,# 創建後直接進行綁定
                 "type":"settings",
                 "category":{
                 }
@@ -179,24 +185,29 @@ class Settings():
             
     
     async def update_settings(self,data:dict):
-        result=await self.collection.update_one({"type":"settings","company":self.company},{"$set":data})
-        return result
+        await self.collection.update_one({"type":"settings","company":self.company},{"$set":data})
+        return 'ok'
 
     
 class KnowledgeBase():
     def __init__(self,request:Request):
         db = request.app.state.db
         self.collection = db.settings
+        self.knowledge = db.knowledge
         self.company = ""
         self.request=request
         
         if 'login' in self.request.session:
-            self.company=self.request.session.get('company','')
+            self.company=self.request.session['login'].get('company_id','')
+            ic(self.company)
             if self.company=='':
                 raise SettingsError("No Company data")
         else:
             
             raise SettingsError("Not logged in")
+        
+    async def create_knowledge(self,data:KnowledgeSchemeCreate):
+        return await self.knowledge.insert_one(data.model_dump())
         
 
     async def get_maincategory(self):# Request本身只是class不是物件
@@ -204,13 +215,19 @@ class KnowledgeBase():
         result = await current_settings.get_settings()
         return result
     
-    async def set_maincategory(self,data:MainCategories):
+    async def create_maincategory(self,data:MainCategoriesCreate):
         current_settings=Settings(self.request)
-        doc=await Settings.get_settings()
-        doc['category']=data
-        result = await current_settings.update_settings(doc)
-        return result
+        doc=await current_settings.get_settings()
         
+        result = await current_settings.update_settings({"category":data.model_dump(exclude="company_description",by_alias=True)})
+        return result
+    
+    async def edit_maincategory(self,data:MainCategoriesCreate):
+        current_settings=Settings(self.request)
+        doc=await current_settings.get_settings()
+        
+        result = await current_settings.update_settings({"category":data.model_dump(exclude_none=True,exclude_unset=True)})
+        return result
         
     
     async def edit_maincategory(self):
@@ -220,6 +237,21 @@ class KnowledgeBase():
     async def delete_maincategory(self):
         pass
     
+    async def dispense_department(self,data:DispenseDepartment):
+        data_dict=data.model_dump(exclude_none=True,by_alias=True)
+        ic(data_dict)
+        setting_obj=Settings(self.request)
+        setting=await setting_obj.get_settings()
+        for i in data_dict:
+            if i not in setting['category']:
+                raise BadInputError("category 不存在")
+            
+            if setting['category'][i]['status']:
+                setting['category'][i]['access']=data_dict[i]
+            else:
+                ic(i)
+                ic(setting['category'][i]['status'])
+        return await setting_obj.update_settings(setting)
     
 class Company():
     def __init__(self,request:Request):
@@ -340,11 +372,11 @@ class Company():
             "company_description",
             "departments"
         }
-        ic(2)
+        # 之後應該要改掉
         if not isinstance(data,dict):
             data=data.model_dump(exclude_unset=True)
         update_data = {k: v for k, v in (data or {}).items() if k in allowed_keys}
-        ic(1)
+
         if not update_data:
             raise CompanyError("no valid fields to update")
 
@@ -365,3 +397,17 @@ class Company():
             raise CompanyError("company not found")
         return "ok"
 
+
+class Chat():
+    def __init__(self,request:Request):
+        db = request.app.state.db
+        self.collection = db.chat_history
+        self.request=request
+
+    async def create_chat_record(self, data:ChatRecordCreate):
+        data_dict = data.model_dump()
+        return await self.collection.insert_one(data_dict)
+    
+    async def create_chat_record(self, data:ChatRecordEdit):
+        data_dict = data.model_dump(exclude_unset=True,exclude_none=True)
+        return await self.collection.update_one({"$set":data_dict})
