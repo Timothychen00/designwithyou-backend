@@ -128,9 +128,10 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
     user_profile = await User().get_user({"username":username}) # company_id
     # department
     # 
-    
     data.department = user_profile['department']
+    data.created_by = username
     
+    # AI generate
     # main_category
     # sub_category
     

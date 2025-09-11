@@ -38,7 +38,7 @@ class KnowledgeSchemeCreate(BaseModel):
 
     files:list[str] = []
     status:Literal['solved','unsolved']="unsolved" #是否被解決 
-    report:str #?
+    created_by:str="" #?
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_serializer("timestamp")
