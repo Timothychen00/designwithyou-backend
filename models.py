@@ -101,7 +101,7 @@ class User():
                         "note":user.note,
                         "department":user.department
                     }
-                    
+
                     
                     try:
                         result = await self.usercollection.insert_one(data)

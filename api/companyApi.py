@@ -1,0 +1,53 @@
+from fastapi import APIRouter,Request,Depends,Query, Body
+
+from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,CompanyScheme,CompanyStructureSetupScheme
+from models import Company
+from auth import login_required
+
+router = APIRouter( tags=['Company'])
+
+@router.get("/api/company")
+async def get_company(request: Request,user_session=Depends(login_required(authority="admin"))):
+    svc = Company(request)
+    company_id=user_session['company_id']
+    company = await svc.get_company(company_id)
+    return ResponseModel(message="ok", data=company)
+
+@router.post("/api/company")
+async def create_company(request: Request, payload: CompanyScheme = None,user_session=Depends(login_required(authority="admin"))):
+    svc = Company(request)
+    if not payload:
+        username=user_session['username']
+        company_id = await svc.create_empty_company(username)
+        return ResponseModel(message="empty company created", data={"company_id": company_id})
+    else:
+        company_id = await svc.create_company(payload)
+        return ResponseModel(message="company created", data={"company_id": company_id})
+    
+
+@router.put("/api/company")
+async def edit_company(request: Request, company_id: str, data: CompanyScheme,user_session=Depends(login_required(authority="admin"))):
+    svc = Company(request)
+    result = await svc.edit_company(company_id, data)
+    return ResponseModel(message="updated", data={"status": result})
+
+@router.delete("/api/company")#記得要改使用者那邊
+async def delete_company(request: Request, company_id: str ,user_session=Depends(login_required(authority="admin"))):
+    svc = Company(request)
+    result = await svc.delete_company(company_id)
+    return ResponseModel(message="deleted", data={"status": result})
+
+
+@router.post("/api/company/setup_company_structure")
+async def setup_company_structure(request: Request,company_id: str ,departments:CompanyStructureSetupScheme ):
+    svc = Company(request)
+    result = await svc.setup_company_structure(company_id,departments)
+    return ResponseModel(message="ok", data=result)
+
+@router.get("/api/company/department")#記得要改使用者那邊
+async def get_departments(request: Request, company_id: str ,user_session=Depends(login_required(authority="admin"))):
+    svc = Company(request)
+    result = await svc.get_company_departmentlist(company_id)
+    return ResponseModel(message="ok", data=result)
+
+
