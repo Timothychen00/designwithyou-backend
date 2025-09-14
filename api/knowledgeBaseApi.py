@@ -1,10 +1,11 @@
-from fastapi import APIRouter,Request,Depends
+from fastapi import APIRouter,Request,Depends,Query
+from typing import Optional
 from icecream import ic
 
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
-from models import KnowledgeBase,Company,AI,User
+from models import KnowledgeBase,Company,AI,User,Statistic
 from auth import login_required
 
 router = APIRouter( tags=['KnowledgeBase'])
@@ -49,6 +50,23 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
     result = await KnowledgeBase(request).create_knowledge(data)
     return ResponseModel(message="ok", data=result)
 
+@router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
+async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
+    svc = Statistic(request)
+    company_id=user_session['company_id']
+    filter={}
+    result = await svc.get_knowledge_count(company_id,filter)
+    return ResponseModel(message="ok", data=result)
+
+@router.post('/api/knowledge_base/knowledge_count/filter',tags=['Statistics'])
+async def get_knowledge_count_filtered(request:Request,filter:Optional[dict]=None,user_session=Depends(login_required(authority="admin"))):
+    svc = Statistic(request)
+    company_id=user_session['company_id']
+    if not filter:
+        filter={}
+    result = await svc.get_knowledge_count(company_id,filter)
+    return ResponseModel(message="ok", data=result)
+
 @router.post('/api/knowledge_base/chat')
 async def chat():
     AI().create_record()
@@ -76,3 +94,5 @@ async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme
 async def reset_maincategory_list(request:Request):
     result = await KnowledgeBase(request).reset_maincategory()
     return ResponseModel(message="ok", data=result)
+
+

@@ -447,4 +447,16 @@ class AI():
         print(resp.output.text)
 
 
-
+class Statistic():
+    def __init__(self,request:Request):
+        self.db = request.app.state.db
+        self.collection = self.db.companies
+        self.request=request
+        
+    async def get_company_employee_count(self,company_id:str):
+        return ic(await self.db.user.count_documents({'company':company_id}))
+    
+    async def get_knowledge_count(self,company_id:str,filter:dict={}):
+        search_filter={'company':company_id}
+        search_filter.update(filter)
+        return ic(await self.db.knowledge.count_documents(search_filter))

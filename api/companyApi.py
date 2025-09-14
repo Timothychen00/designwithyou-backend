@@ -2,7 +2,7 @@ from fastapi import APIRouter,Request,Depends,Query, Body
 
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
-from models import Company
+from models import Company,Statistic
 from auth import login_required
 
 router = APIRouter( tags=['Company'])
@@ -51,4 +51,16 @@ async def get_departments(request: Request, company_id: str ,user_session=Depend
     result = await svc.get_company_departmentlist(company_id)
     return ResponseModel(message="ok", data=result)
 
+@router.get('/api/company/employee')
+async def get_employee(request: Request, company_id: str ,user_session=Depends(login_required(authority="admin"))):
+    svc = Company(request)
+    result = await svc.get_company_departmentlist(company_id)
+    return ResponseModel(message="ok", data=result)
 
+
+@router.get('/api/company/employee_count',tags=['Statistics'])
+async def get_employee_count(request: Request ,user_session=Depends(login_required(authority="admin"))):
+    svc = Statistic(request)
+    company_id=user_session['company_id']
+    result = await svc.get_company_employee_count(company_id)
+    return ResponseModel(message="ok", data=result)

@@ -10,7 +10,6 @@ from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from errors import UserError, SettingsError,CompanyError,BadInputError
 from api import companyApi,knowledgeBaseApi,userApi,settingsApi
 
-
 app = FastAPI(lifespan=lifespan)
 #模組化
 app.include_router(companyApi.router)
@@ -48,8 +47,6 @@ async def custom_http_exception_handler(request: Request, exc: CustomHTTPExcepti
             data=exc.data
         ).model_dump()
     )
-
-
 
 @app.get("/",response_model=ResponseModel)
 async def root():
