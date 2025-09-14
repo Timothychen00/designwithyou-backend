@@ -1,13 +1,19 @@
 from fastapi import APIRouter,Request
 
-from schemes import ResponseModel
+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+from schemes.settingsSchemes import SettingsUpdateScheme
 from models import Settings
 from auth import login_required
 
 router = APIRouter( tags=['Settings'])
 
-@router.post("/settings")
-async def settings_endpoint(request:Request):
+@router.get("/settings")
+async def get_setttings(request:Request):
     result = await Settings(request).get_settings()
+    return ResponseModel(message=str(result))
+
+@router.put("/settings")
+async def update_settings(request:Request,data:SettingsUpdateScheme):
+    result = await Settings(request).update_settings(data)
     return ResponseModel(message=str(result))
 

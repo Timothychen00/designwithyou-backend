@@ -3,21 +3,20 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from icecream import ic
 import os
-import asyncio
 
-from auth import login_required
-from models import lifespan, User, Settings,KnowledgeBase,Chat
-from schemes import ResponseModel, CustomHTTPException, UserLoginScheme, KnowledgeSchemeCreate, CompanyScheme, UserRegisterScheme,CompanyStructureSetupScheme,MainCategoriesCreate,DispenseDepartment
+from models import lifespan
+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+
 from errors import UserError, SettingsError,CompanyError,BadInputError
-from api import companyApi,knowledgeBaseApi,userApi
+from api import companyApi,knowledgeBaseApi,userApi,settingsApi
 
 
 app = FastAPI(lifespan=lifespan)
-
 #模組化
 app.include_router(companyApi.router)
 app.include_router(knowledgeBaseApi.router)
 app.include_router(userApi.router)
+app.include_router(settingsApi.router)
 
 app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
 
@@ -67,9 +66,5 @@ async def healthz(request: Request):
         "ready": cache.ready.is_set(),
         "last_error": cache.last_error,
     }
-
-
-
-# company
 
 # 留stage api讓前端追蹤註冊的進度到哪裡了

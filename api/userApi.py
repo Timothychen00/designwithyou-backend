@@ -1,6 +1,7 @@
 from fastapi import APIRouter,Request,Depends
 
-from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException
+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models import User
 from auth import login_required
 

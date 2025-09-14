@@ -1,8 +1,10 @@
 from fastapi import APIRouter,Request,Depends
 from icecream import ic
 
-from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,MainCategoriesCreate,DispenseDepartment,KnowledgeSchemeCreate
-from models import KnowledgeBase,Company,Chat,User
+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+from models import KnowledgeBase,Company,AI,User
 from auth import login_required
 
 router = APIRouter( tags=['KnowledgeBase'])
@@ -49,4 +51,28 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
 
 @router.post('/api/knowledge_base/chat')
 async def chat():
-    Chat().create_chat_record()
+    AI().create_record()
+
+
+
+# maincategory
+
+@router.get('/api/knowledge_base/maincategory')
+async def get_maincategory_list(request:Request):
+    result = await KnowledgeBase(request).get_maincategory()
+    return ResponseModel(message="ok", data=result)
+
+@router.post('/api/knowledge_base/maincategory')
+async def create_maincategory_list(request:Request,data:MainCategoriesCreate):
+    result = await KnowledgeBase(request).create_maincategory(data)
+    return ResponseModel(message="ok", data=result)
+
+@router.put('/api/knowledge_base/maincategory')
+async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme):
+    result = await KnowledgeBase(request).edit_maincategory(data)
+    return ResponseModel(message="ok", data=result)
+
+@router.delete('/api/knowledge_base/maincategory')
+async def reset_maincategory_list(request:Request):
+    result = await KnowledgeBase(request).reset_maincategory()
+    return ResponseModel(message="ok", data=result)

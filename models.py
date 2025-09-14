@@ -3,16 +3,20 @@ from fastapi import FastAPI, HTTPException, Request
 from passlib.context import CryptContext
 from icecream import ic
 from bson import ObjectId
+from openai import AsyncOpenAI
 
 import os
-import asyncio
-import anyio    #async corotine的lock
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
-from schemes import *
+from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+from schemes.settingsSchemes import SettingsUpdateScheme
 from errors import UserError,SettingsError,CompanyError,BadInputError
-from tools import token_generator
+from tools import token_generator,_ensure_model
 
 load_dotenv()
 
@@ -34,10 +38,13 @@ async def lifespan(app: FastAPI):
     if os.environ['MODE'] == 'local':
         connection_string = "mongodb://localhost:27017/"
 
+    # MongoDB Agent 
     client = AsyncIOMotorClient(connection_string)
     app.state.db_client = client
     app.state.db = client["main"]
     app.state.user = app.state.db.user
+    # OpenAI Agent
+    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
     
     try:
         yield
@@ -184,8 +191,14 @@ class Settings():
             return result[0]
             
     
-    async def update_settings(self,data:dict):
-        await self.collection.update_one({"type":"settings","company":self.company},{"$set":data})
+    async def update_settings(self,data:dict | SettingsUpdateScheme):
+        _data_model=_ensure_model(data,SettingsUpdateScheme)
+        _data=_data_model.model_dump(exclude_none=True,exclude_unset=True,by_alias=True)
+        
+        if not _data:
+            raise BadInputError("No valid fields provided to update")
+    
+        await self.collection.update_one({"type":"settings","company":self.company},{"$set":_data})
         return 'ok'
 
     
@@ -222,20 +235,15 @@ class KnowledgeBase():
         result = await current_settings.update_settings({"category":data.model_dump(exclude="company_description",by_alias=True)})
         return result
     
-    async def edit_maincategory(self,data:MainCategoriesCreate):
+    async def edit_maincategory(self,data:MainCategoriesUpdateScheme):
         current_settings=Settings(self.request)
-        doc=await current_settings.get_settings()
-        
         result = await current_settings.update_settings({"category":data.model_dump(exclude_none=True,exclude_unset=True)})
         return result
+    
+    async def reset_maincategory(self):
+        template_data=MainCategoriesTemplate().model_dump(by_alias=True,exclude="company_description")
+        return await Settings(self.request).update_settings({"category":template_data})
         
-    
-    async def edit_maincategory(self):
-        # verify_password
-        pass
-    
-    async def delete_maincategory(self):
-        pass
     
     async def dispense_department(self,data:DispenseDepartment):
         data_dict=data.model_dump(exclude_none=True,by_alias=True)
@@ -398,16 +406,45 @@ class Company():
         return "ok"
 
 
-class Chat():
+class AI():
     def __init__(self,request:Request):
         db = request.app.state.db
         self.collection = db.chat_history
         self.request=request
+        
+        self.agent=request.app.state.agent
 
-    async def create_chat_record(self, data:ChatRecordCreate):
+    async def create_record(self, record_type:str,data:RecordCreate ):
+        data.type=record_type
+        data=_ensure_model(data,RecordCreate)
         data_dict = data.model_dump()
         return await self.collection.insert_one(data_dict)
     
-    async def create_chat_record(self, data:ChatRecordEdit):
+    async def edit_record(self, data:RecordEdit):
+        data=_ensure_model(data,RecordEdit)
         data_dict = data.model_dump(exclude_unset=True,exclude_none=True)
         return await self.collection.update_one({"$set":data_dict})
+    
+    async def ask_question(self,question,by):
+        instructions="""
+        
+        
+        
+        
+        """
+        
+        resp = await self.agent.responses.create(
+            model="gpt-5-nano-2025-08-07",
+            instruction=instructions,
+            # gpt-5-nano-2025-08-07
+            prompt=question,
+        )
+        self.create_record("chat",RecordCreate(
+            ask=question,
+            answer=resp.output.text,
+            user=by
+        ))
+        print(resp.output.text)
+
+
+

@@ -1,6 +1,6 @@
 from fastapi import Request
 
-from schemes import CustomHTTPException
+from schemes.utilitySchemes import CustomHTTPException
 
 def login_required(authority: str):
     async def checker(request: Request):

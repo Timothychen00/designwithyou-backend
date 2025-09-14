@@ -1,0 +1,616 @@
+diff --git a/api/companyApi.py b/api/companyApi.py
+index 10d095f..f939737 100644
+--- a/api/companyApi.py
++++ b/api/companyApi.py
+@@ -1,6 +1,7 @@
+ from fastapi import APIRouter,Request,Depends,Query, Body
+ 
+-from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,CompanyScheme,CompanyStructureSetupScheme
++from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
++from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+ from models import Company
+ from auth import login_required
+ 
+diff --git a/api/knowledgeBaseApi.py b/api/knowledgeBaseApi.py
+index 3283362..6b348c0 100644
+--- a/api/knowledgeBaseApi.py
++++ b/api/knowledgeBaseApi.py
+@@ -1,8 +1,10 @@
+ from fastapi import APIRouter,Request,Depends
+ from icecream import ic
+ 
+-from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,MainCategoriesCreate,DispenseDepartment,KnowledgeSchemeCreate
+-from models import KnowledgeBase,Company,Chat,User
++from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
++from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
++from schemes.utilitySchemes import CustomHTTPException,ResponseModel
++from models import KnowledgeBase,Company,AI,User
+ from auth import login_required
+ 
+ router = APIRouter( tags=['KnowledgeBase'])
+@@ -49,4 +51,28 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
+ 
+ @router.post('/api/knowledge_base/chat')
+ async def chat():
+-    Chat().create_chat_record()
++    AI().create_record()
++
++
++
++# maincategory
++
++@router.get('/api/knowledge_base/maincategory')
++async def get_maincategory_list(request:Request):
++    result = await KnowledgeBase(request).get_maincategory()
++    return ResponseModel(message="ok", data=result)
++
++@router.post('/api/knowledge_base/maincategory')
++async def create_maincategory_list(request:Request,data:MainCategoriesCreate):
++    result = await KnowledgeBase(request).create_maincategory(data)
++    return ResponseModel(message="ok", data=result)
++
++@router.put('/api/knowledge_base/maincategory')
++async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme):
++    result = await KnowledgeBase(request).edit_maincategory(data)
++    return ResponseModel(message="ok", data=result)
++
++@router.delete('/api/knowledge_base/maincategory')
++async def reset_maincategory_list(request:Request):
++    result = await KnowledgeBase(request).reset_maincategory()
++    return ResponseModel(message="ok", data=result)
+\ No newline at end of file
+diff --git a/api/settingsApi.py b/api/settingsApi.py
+index efab601..6216edc 100644
+--- a/api/settingsApi.py
++++ b/api/settingsApi.py
+@@ -1,13 +1,19 @@
+ from fastapi import APIRouter,Request
+ 
+-from schemes import ResponseModel
++from schemes.utilitySchemes import CustomHTTPException,ResponseModel
++from schemes.settingsSchemes import SettingsUpdateScheme
+ from models import Settings
+ from auth import login_required
+ 
+ router = APIRouter( tags=['Settings'])
+ 
+-@router.post("/settings")
+-async def settings_endpoint(request:Request):
++@router.get("/settings")
++async def get_setttings(request:Request):
+     result = await Settings(request).get_settings()
+     return ResponseModel(message=str(result))
+ 
++@router.put("/settings")
++async def update_settings(request:Request,data:SettingsUpdateScheme):
++    result = await Settings(request).update_settings(data)
++    return ResponseModel(message=str(result))
++
+diff --git a/api/userApi.py b/api/userApi.py
+index 29e2f59..a46adb6 100644
+--- a/api/userApi.py
++++ b/api/userApi.py
+@@ -1,6 +1,7 @@
+ from fastapi import APIRouter,Request,Depends
+ 
+-from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException
++from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
++from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+ from models import User
+ from auth import login_required
+ 
+diff --git a/app.py b/app.py
+index d1dfeae..1cd00cf 100644
+--- a/app.py
++++ b/app.py
+@@ -3,21 +3,20 @@ from fastapi.responses import JSONResponse
+ from starlette.middleware.sessions import SessionMiddleware
+ from icecream import ic
+ import os
+-import asyncio
+ 
+-from auth import login_required
+-from models import lifespan, User, Settings,KnowledgeBase,Chat
+-from schemes import ResponseModel, CustomHTTPException, UserLoginScheme, KnowledgeSchemeCreate, CompanyScheme, UserRegisterScheme,CompanyStructureSetupScheme,MainCategoriesCreate,DispenseDepartment
++from models import lifespan
++from schemes.utilitySchemes import CustomHTTPException,ResponseModel
++
+ from errors import UserError, SettingsError,CompanyError,BadInputError
+-from api import companyApi,knowledgeBaseApi,userApi
++from api import companyApi,knowledgeBaseApi,userApi,settingsApi
+ 
+ 
+ app = FastAPI(lifespan=lifespan)
+-
+ #模組化
+ app.include_router(companyApi.router)
+ app.include_router(knowledgeBaseApi.router)
+ app.include_router(userApi.router)
++app.include_router(settingsApi.router)
+ 
+ app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
+ 
+@@ -68,8 +67,4 @@ async def healthz(request: Request):
+         "last_error": cache.last_error,
+     }
+ 
+-
+-
+-# company
+-
+ # 留stage api讓前端追蹤註冊的進度到哪裡了
+\ No newline at end of file
+diff --git a/auth.py b/auth.py
+index b779952..c982273 100644
+--- a/auth.py
++++ b/auth.py
+@@ -1,6 +1,6 @@
+ from fastapi import Request
+ 
+-from schemes import CustomHTTPException
++from schemes.utilitySchemes import CustomHTTPException
+ 
+ def login_required(authority: str):
+     async def checker(request: Request):
+diff --git a/models.py b/models.py
+index 85cb385..b301c71 100644
+--- a/models.py
++++ b/models.py
+@@ -3,16 +3,20 @@ from fastapi import FastAPI, HTTPException, Request
+ from passlib.context import CryptContext
+ from icecream import ic
+ from bson import ObjectId
++from openai import AsyncOpenAI
+ 
+ import os
+-import asyncio
+-import anyio    #async corotine的lock
+ from contextlib import asynccontextmanager
+ from dotenv import load_dotenv
+ 
+-from schemes import *
++from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
++from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
++from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
++from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
++from schemes.utilitySchemes import CustomHTTPException,ResponseModel
++from schemes.settingsSchemes import SettingsUpdateScheme
+ from errors import UserError,SettingsError,CompanyError,BadInputError
+-from tools import token_generator
++from tools import token_generator,_ensure_model
+ 
+ load_dotenv()
+ 
+@@ -34,10 +38,13 @@ async def lifespan(app: FastAPI):
+     if os.environ['MODE'] == 'local':
+         connection_string = "mongodb://localhost:27017/"
+ 
++    # MongoDB Agent 
+     client = AsyncIOMotorClient(connection_string)
+     app.state.db_client = client
+     app.state.db = client["main"]
+     app.state.user = app.state.db.user
++    # OpenAI Agent
++    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+     
+     try:
+         yield
+@@ -184,8 +191,14 @@ class Settings():
+             return result[0]
+             
+     
+-    async def update_settings(self,data:dict):
+-        await self.collection.update_one({"type":"settings","company":self.company},{"$set":data})
++    async def update_settings(self,data:dict | SettingsUpdateScheme):
++        _data_model=_ensure_model(data,SettingsUpdateScheme)
++        _data=_data_model.model_dump(exclude_none=True,exclude_unset=True,by_alias=True)
++        
++        if not _data:
++            raise BadInputError("No valid fields provided to update")
++    
++        await self.collection.update_one({"type":"settings","company":self.company},{"$set":_data})
+         return 'ok'
+ 
+     
+@@ -222,20 +235,15 @@ class KnowledgeBase():
+         result = await current_settings.update_settings({"category":data.model_dump(exclude="company_description",by_alias=True)})
+         return result
+     
+-    async def edit_maincategory(self,data:MainCategoriesCreate):
++    async def edit_maincategory(self,data:MainCategoriesUpdateScheme):
+         current_settings=Settings(self.request)
+-        doc=await current_settings.get_settings()
+-        
+         result = await current_settings.update_settings({"category":data.model_dump(exclude_none=True,exclude_unset=True)})
+         return result
+-        
+     
+-    async def edit_maincategory(self):
+-        # verify_password
+-        pass
+-    
+-    async def delete_maincategory(self):
+-        pass
++    async def reset_maincategory(self):
++        template_data=MainCategoriesTemplate().model_dump(by_alias=True,exclude="company_description")
++        return await Settings(self.request).update_settings({"category":template_data})
++        
+     
+     async def dispense_department(self,data:DispenseDepartment):
+         data_dict=data.model_dump(exclude_none=True,by_alias=True)
+@@ -398,16 +406,45 @@ class Company():
+         return "ok"
+ 
+ 
+-class Chat():
++class AI():
+     def __init__(self,request:Request):
+         db = request.app.state.db
+         self.collection = db.chat_history
+         self.request=request
++        
++        self.agent=request.app.state.agent
+ 
+-    async def create_chat_record(self, data:ChatRecordCreate):
++    async def create_record(self, record_type:str,data:RecordCreate ):
++        data.type=record_type
++        data=_ensure_model(data,RecordCreate)
+         data_dict = data.model_dump()
+         return await self.collection.insert_one(data_dict)
+     
+-    async def create_chat_record(self, data:ChatRecordEdit):
++    async def edit_record(self, data:RecordEdit):
++        data=_ensure_model(data,RecordEdit)
+         data_dict = data.model_dump(exclude_unset=True,exclude_none=True)
+-        return await self.collection.update_one({"$set":data_dict})
+\ No newline at end of file
++        return await self.collection.update_one({"$set":data_dict})
++    
++    async def ask_question(self,question,by):
++        instructions="""
++        
++        
++        
++        
++        """
++        
++        resp = await self.agent.responses.create(
++            model="gpt-5-nano-2025-08-07",
++            instruction=instructions,
++            # gpt-5-nano-2025-08-07
++            prompt=question,
++        )
++        self.create_record("chat",RecordCreate(
++            ask=question,
++            answer=resp.output.text,
++            user=by
++        ))
++        print(resp.output.text)
++
++
++
+diff --git a/readme.md b/readme.md
+index 20659d4..e60b6bc 100644
+--- a/readme.md
++++ b/readme.md
+@@ -141,7 +141,8 @@ curl -X GET http://localhost:8000/checkauth \
+ ## 測試資料
+ - /api/company/setup_company_structure
+   - 
+-    ```json
++    
++```json
+   {
+   "departments": [
+     {
+@@ -216,9 +217,9 @@ curl -X GET http://localhost:8000/checkauth \
+     }
+   ]
+ }
+-        ```
+-
++```
+ 
++```json
+ {
+   "company_description": "本企業概況為全面掌握日用品與美妝零售通路，經營實體門市超過200家，商品類別多元，SKU 數量眾多，涵蓋生活百貨、個人清潔、美妝保養、保健食品。內部人力規模涵蓋門市、倉儲、客服、採購等，且立有標準SOP流程。希望能透過知識庫強化內部作業與回饋機制。",
+   "品質管理": {
+@@ -295,20 +296,22 @@ curl -X GET http://localhost:8000/checkauth \
+     "status": false
+   }
+ }
++```
+ 
+ 
+-
+-{
+-  "品質管理": ["總部","商品部"],
+-  "倉儲管理": ["總部","營運部"],
+-  "生產管理": ["總部"],
+-  "客戶服務": ["總部","客戶服務中心"],
+-  "採購管理": ["總部","採購部"],
+-  "設備維護": ["總部"],
+-  "能源管理": ["總部","行銷策劃部"],
+-  "物流與配送": ["總部"],
+-  "研發與創新": ["總部"],
+-  "財務管理": ["總部"],
+-  "人力資源": ["總部","人力資源部"],
+-  "數據安全與治理": ["總部"]
+-}
+\ No newline at end of file
++```json
++  {
++    "品質管理": ["總部","商品部"],
++    "倉儲管理": ["總部","營運部"],
++    "生產管理": ["總部"],
++    "客戶服務": ["總部","客戶服務中心"],
++    "採購管理": ["總部","採購部"],
++    "設備維護": ["總部"],
++    "能源管理": ["總部","行銷策劃部"],
++    "物流與配送": ["總部"],
++    "研發與創新": ["總部"],
++    "財務管理": ["總部"],
++    "人力資源": ["總部","人力資源部"],
++    "數據安全與治理": ["總部"]
++  }
++```
+\ No newline at end of file
+diff --git a/schemes.py b/schemes.py
+deleted file mode 100644
+index 27538dd..0000000
+--- a/schemes.py
++++ /dev/null
+@@ -1,179 +0,0 @@
+-from fastapi import HTTPException
+-
+-from datetime import datetime, timezone
+-from zoneinfo import ZoneInfo
+-
+-from typing import Any, Optional, Literal
+-from pydantic import BaseModel,EmailStr, field_serializer,Field,ConfigDict
+-
+-from tools import bson_to_jsonable
+-
+-class UserRegisterScheme(BaseModel):
+-    username:EmailStr # account=email
+-    password:str
+-    name:Optional[str]=""
+-    authority:Literal['normal','owner','admin']='normal'
+-    company:Optional[str]=""
+-    phone:Optional[str]=""
+-    role:Optional[str]="" # 角色 
+-    token:Optional[str]=None # permittion to create a admin account
+-    note:Optional[str]=""
+-    department:str=""
+-    
+-class UserLoginScheme(BaseModel):
+-    username:EmailStr # account=email
+-    password:str
+-
+-class KnowledgeSchemeCreate(BaseModel):
+-    _id:str
+-    department:list[str]
+-    keywords:list[str]=[]
+-    tag:list[str] =[]
+-    
+-    example_question:str
+-    example_answer:str = ""
+-    
+-    main_category:str 
+-    sub_category:str 
+-
+-    files:list[str] = []
+-    status:Literal['solved','unsolved']="unsolved" #是否被解決 
+-    created_by:str="" #?
+-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+-
+-    @field_serializer("timestamp")
+-    def _serialize_timestamp(self, v: datetime):
+-        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+-        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
+-    
+-class ContactPerson(BaseModel):
+-    name: str
+-    email: EmailStr
+-    phone: Optional[str] = ""
+-    
+-class MainCategoryConfig(BaseModel):
+-    description: list[str] = []
+-    sub: list[str] = []
+-    access: list[str] = []
+-    status: bool
+-
+-class MainCategoriesCreate(BaseModel):
+-    # 僅這些 key 合法；沒出現在這裡的 key 會被直接擋掉
+-    # 內部以英文欄位名維護；對外用中文 key（alias）收/回資料。
+-    # 只允許下列欄位（extra='forbid'），未列出的 key 會被擋掉。
+-    company_description:str = ""
+-    
+-    quality_management: Optional[MainCategoryConfig] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
+-    warehouse_management: Optional[MainCategoryConfig] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理"    )
+-    production_management: Optional[MainCategoryConfig] = Field(None, validation_alias="生產管理", serialization_alias="生產管理"    )
+-    customer_service: Optional[MainCategoryConfig] = Field(None, validation_alias="客戶服務", serialization_alias="客戶服務"    )
+-    procurement_management: Optional[MainCategoryConfig] = Field(None, validation_alias="採購管理", serialization_alias="採購管理"    )
+-    equipment_maintenance: Optional[MainCategoryConfig] = Field(None, validation_alias="設備維護", serialization_alias="設備維護"    )
+-    energy_management: Optional[MainCategoryConfig] = Field(None, validation_alias="能源管理", serialization_alias="能源管理"    )
+-    logistics_and_distribution: Optional[MainCategoryConfig] = Field(None, validation_alias="物流與配送", serialization_alias="物流與配送"    )
+-    r_n_d_innovation: Optional[MainCategoryConfig] = Field(None, validation_alias="研發與創新", serialization_alias="研發與創新"    )
+-    financial_management: Optional[MainCategoryConfig] = Field(None, validation_alias="財務管理", serialization_alias="財務管理"    )
+-    human_resources: Optional[MainCategoryConfig] = Field(None, validation_alias="人力資源", serialization_alias="人力資源"    )
+-    data_security_and_governance: Optional[MainCategoryConfig] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理"    )
+-    # extra='forbid'
+-    # 控制「額外 key」的處理方式。
+-    # Pydantic 預設是 extra='ignore'（沒定義的 key 會被丟掉），
+-    # 你這裡改成 forbid → 沒定義的 key 會直接報錯
+-
+-
+-class CompanyScheme(BaseModel):
+-    company_name: str
+-    company_type: list[str]
+-    company_unicode: str  # 統編
+-    company_property: list[str]
+-    contact_person: ContactPerson
+-    company_description: Optional[str] = ""   # 產業型態
+-    company_scale:str="",#50~100
+-    department_count:int
+-    language:str="zh"
+-
+-class CompanyStructureListItem(BaseModel):
+-    department_name: str
+-    parent_department: str
+-    role: str  # 職責描述
+-    person_in_charge: ContactPerson
+-
+-class CompanyStructureListItemDB(BaseModel):
+-    department_name: str
+-    parent_department: str
+-    role: str  # 職責描述
+-    person_in_charge_id: str
+-
+-
+-
+-# Response Scheme
+-
+-#定義標準的回應格式
+-class ResponseModel(BaseModel):
+-    success: bool = True
+-    status_code: int = 200 
+-    message: str # 提示訊息
+-    data: Optional[Any] = None #如果需要夾帶資料的話可以放這裡
+-
+-    @field_serializer('data') # 針對data這個欄位進行客製化的serialize，解決bson會出現的問題
+-    def serialize_data(self, v):
+-        return bson_to_jsonable(v)  # 低迴進行控制
+-    
+-class CompanyStructureSetupScheme(BaseModel):
+-    departments:list[CompanyStructureListItem]
+-    
+-class DispenseDepartment(BaseModel):
+-    quality_management: Optional[list[str]] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
+-    warehouse_management: Optional[list[str]] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理")
+-    production_management: Optional[list[str]] = Field(None, validation_alias="生產管理", serialization_alias="生產管理")
+-    customer_service: Optional[list[str]] = Field(None, validation_alias="客戶服務", serialization_alias="客戶服務")
+-    procurement_management: Optional[list[str]] = Field(None, validation_alias="採購管理", serialization_alias="採購管理")
+-    equipment_maintenance: Optional[list[str]] = Field(None, validation_alias="設備維護", serialization_alias="設備維護")
+-    energy_management: Optional[list[str]] = Field(None, validation_alias="能源管理", serialization_alias="能源管理")
+-    logistics_and_distribution: Optional[list[str]] = Field(None, validation_alias="物流與配送", serialization_alias="物流與配送")
+-    r_n_d_innovation: Optional[list[str]] = Field(None, validation_alias="研發與創新", serialization_alias="研發與創新")
+-    financial_management: Optional[list[str]] = Field(None, validation_alias="財務管理", serialization_alias="財務管理")
+-    human_resources: Optional[list[str]] = Field(None, validation_alias="人力資源", serialization_alias="人力資源")
+-    data_security_and_governance: Optional[list[str]] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理")
+-
+-
+-# 在原本HTTPException的基礎上加入data和code欄位
+-class CustomHTTPException(HTTPException):
+-    def __init__(self, message: str, status_code: int = 400, data: Any = None):
+-        # super()本身只會拿到父物件，如果需要call 父親物件的constructor需要手動另外呼叫
+-        super().__init__(status_code=status_code, detail=message)
+-        self.data = data
+-        
+-        
+-class  QuestionReponse(BaseModel):
+-    response:str
+-
+-class ChatRecordCreate(BaseModel):
+-    ask: str
+-    answer: str
+-    user: str
+-    status:Literal['normal','suggest-solved','suggest-unsolved']
+-    reponse:QuestionReponse=""
+-    # Store as timezone-aware UTC datetime; auto-fill on creation
+-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+-
+-    @field_serializer("timestamp")
+-    def _serialize_timestamp(self, v: datetime):
+-        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+-        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
+-    
+-    
+-class ChatRecordEdit(BaseModel):
+-    ask: str =""
+-    answer: str =""
+-    user: str=""
+-    status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
+-    reponse:QuestionReponse=""
+-    # Store as timezone-aware UTC datetime; auto-fill on creation
+-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+-
+-    @field_serializer("timestamp")
+-    def _serialize_timestamp(self, v: datetime):
+-        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+-        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
+-    
+\ No newline at end of file
+diff --git a/test.py b/test.py
+index 0bac59c..735ab61 100644
+--- a/test.py
++++ b/test.py
+@@ -1,13 +1,31 @@
+-from openai import OpenAI
+ import os
+ 
+-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+ 
+-response = client.completions.create(
+-    model="gpt-3.5-turbo-instruct",  # 取代原本的 text-davinci-003
+-    prompt="講個笑話來聽聽",
+-    max_tokens=128,
+-    temperature=0.5,
+-)
++import asyncio
++from openai import AsyncOpenAI
+ 
+-print(response.choices[0].text)
+\ No newline at end of file
++client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])  # async client
++
++async def main():
++    # Instruct-style completion (short by default unless you set max_tokens)
++    resp = await client.completions.create(
++        model="gpt-3.5-turbo-instruct",
++        prompt="講個笑話",
++        max_tokens=200,           # ✅ increase allowed output length (default is small)
++        temperature=0.8,
++        stop=None,
++    )
++    # Print the first choice's text content
++    print(resp.choices[0].text.strip())
++
++    # --- Optional: chat-completions variant ---
++    # If you prefer the chat endpoint (often better maintained), uncomment below:
++    # chat = await client.chat.completions.create(
++    #     model="gpt-4o-mini",
++    #     messages=[{"role": "user", "content": "講個笑話"}],
++    #     max_tokens=200,
++    # )
++    # print(chat.choices[0].message.content)
++
++asyncio.run(main())
++ 
+\ No newline at end of file
+diff --git a/tools.py b/tools.py
+index 31cbf58..1ceb782 100644
+--- a/tools.py
++++ b/tools.py
+@@ -1,5 +1,6 @@
+ from bson import ObjectId
+-
++from pydantic import BaseModel
++from typing import TypeVar
+ import secrets
+ 
+ def token_generator(length:int=24):
+@@ -12,4 +13,11 @@ def bson_to_jsonable(obj):
+         return {k: bson_to_jsonable(v) for k, v in obj.items()}
+     if isinstance(obj, list):
+         return [bson_to_jsonable(v) for v in obj]
+-    return obj
+\ No newline at end of file
++    return obj
++
++M = TypeVar("M", bound=BaseModel)# 讓編譯器可以看得懂
++def _ensure_model(data, model_type: type[M]) -> M:
++    if isinstance(data, model_type):
++        return data
++    return model_type.model_validate(data)
++

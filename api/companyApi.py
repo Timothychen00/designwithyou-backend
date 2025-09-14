@@ -1,6 +1,7 @@
 from fastapi import APIRouter,Request,Depends,Query, Body
 
-from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,CompanyScheme,CompanyStructureSetupScheme
+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models import Company
 from auth import login_required
 
