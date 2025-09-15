@@ -11,7 +11,10 @@ from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from errors import UserError, SettingsError,CompanyError,BadInputError
 from api import companyApi,knowledgeBaseApi,userApi,settingsApi
 
-origins = ["*"]
+origins = [    
+    "http://localhost:5500",  # 你現在前端開的網址
+    "http://localhost:5173",
+]
 
 app = FastAPI(lifespan=lifespan)
 #模組化
@@ -21,7 +24,12 @@ app.include_router(userApi.router)
 app.include_router(settingsApi.router)
 
 # middleware
-app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=os.urandom(16).hex(),
+    same_site="none", 
+    https_only=True
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -29,7 +37,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 #錯誤處理
 @app.exception_handler(BadInputError)

@@ -50,6 +50,6 @@ async def check(request:Request):
         raise CustomHTTPException(status_code=401,message='Not Logged In')
 
 @router.get("/checkauth",response_model=ResponseModel)
-async def checkauthority(request:Request,user_session=Depends(login_required(authority="admin"))):
+async def checkauthority(request:Request,user_session=Depends(login_required(authority="normal"))):
     return ResponseModel(message=str(request.session['login']))
 

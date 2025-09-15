@@ -1,0 +1,39 @@
+<button onclick="check()">check</button>
+<script>
+    fetch('https://2648e43edec6.ngrok-free.app/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body:JSON.stringify({
+        username: "timoad@gmail.com",
+        password: "123"
+    })
+    })
+        .then(response => {
+            if (!response.ok) {
+                console.log("ok")
+            }
+            return response.json()
+        }).then(res=>{
+            console.log(res)
+
+        })
+
+
+    function check(){
+    fetch('https://2648e43edec6.ngrok-free.app/checkauth', {
+        method: 'GET',
+        credentials: 'include', 
+    })
+        .then(response => {
+            if (!response.ok) {
+                console.log("ok")
+            }
+            return response.json()
+        }).then(res=>{
+            console.log(res)
+
+        })
+
+    }
+</script>
