@@ -1,6 +1,6 @@
 from fastapi import APIRouter,Request,Depends
 
-from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models import User
 from auth import login_required
@@ -19,7 +19,25 @@ async def logout(request:Request):
 
 @router.post("/register",response_model=ResponseModel)
 async def register(user:UserRegisterScheme,request:Request):# fastapi的endpoint名稱是可以重複的，因為綁定的ref的位置而不是名稱（不像是flask）
+    """
+        Register a single user
+        
+        if authority is ["admin","owner"] and the token argument is provided
+        then this will automatically create a binding company instance
+    """
     result=await User(request).register(user)
+    return ResponseModel(message=str(result))
+
+@router.post("/register_many",response_model=ResponseModel)
+async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,user_session=Depends(login_required(authority="normal"))):# fastapi的endpoint名稱是可以重複的，因為綁定的ref的位置而不是名稱（不像是flask）
+    """
+        for Step5
+        
+        Used for auto complete company for creating users (In order to fulfill this, login is required)
+    """
+    
+    company_id=user_session['company_id']
+    result=await User(request).register_many(company_id,user)
     return ResponseModel(message=str(result))
 
 @router.get("/check",response_model=ResponseModel)

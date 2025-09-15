@@ -6,6 +6,7 @@ from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,Compan
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models import KnowledgeBase,Company,AI,User,Statistic
+from errors import BadInputError
 from auth import login_required
 
 router = APIRouter( tags=['KnowledgeBase'])
@@ -27,20 +28,29 @@ async def create_knowledge_base(request: Request ,main_category:MainCategoriesCr
     result['company_description']=await Company(request).edit_company(company_id,{"company_description":main_category.company_description})
     return ResponseModel(message="ok", data=result)
 
-
 @router.post("/api/knowledge_base/department_authority")
 async def dispense_department(request:Request,data:DispenseDepartment):
     result = await KnowledgeBase(request).dispense_department(data)
     return ResponseModel(message="ok", data=result)
 
+@router.get("/api/knowledge_base/knowledge")
+async def get_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="normal"))):
+    username = user_session['username']
+    user_profile = await User(request).get_user({"username":username}) # company_id
+    # department
+    data.department = user_profile.get('department')
+    result = await KnowledgeBase(request).create_knowledge(data)
+    return ResponseModel(message="ok", data=result)
 
 @router.post("/api/knowledge_base/knowledge")
 async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
-    username = user_session.username
-    user_profile = await User().get_user({"username":username}) # company_id
+    username = user_session['username']
+    user_profile = await User(request).get_user({"username":username}) # company_id
     # department
-    # 
-    data.department = user_profile['department']
+    data.department = user_profile.get('department')
+    if not data.department:
+        raise BadInputError("User department is empty or disable")
+    
     data.created_by = username
     
     # AI generate

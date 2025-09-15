@@ -15,6 +15,8 @@ class ResponseModel(BaseModel):
     @field_serializer('data') # 針對data這個欄位進行客製化的serialize，解決bson會出現的問題
     def serialize_data(self, v):
         return bson_to_jsonable(v)  # 低迴進行控制
+    
+ResponseModel.model_rebuild()
 
 # 在原本HTTPException的基礎上加入data和code欄位
 class CustomHTTPException(HTTPException):

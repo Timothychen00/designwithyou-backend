@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 class KnowledgeSchemeCreate(BaseModel):
     _id:str
-    department:list[str]
+    department:list[str]=[]
     keywords:list[str]=[]
     tag:list[str] =[]
     
@@ -19,11 +19,6 @@ class KnowledgeSchemeCreate(BaseModel):
     status:Literal['solved','unsolved']="unsolved" #是否被解決 
     created_by:str="" #?
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-    @field_serializer("timestamp")
-    def _serialize_timestamp(self, v: datetime):
-        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
-    
 
 class MainCategoryConfig(BaseModel):
     description: list[str] = []

@@ -15,11 +15,6 @@ class RecordCreate(BaseModel):
     reponse:QuestionReponse=""
     # Store as timezone-aware UTC datetime; auto-fill on creation
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-    @field_serializer("timestamp")
-    def _serialize_timestamp(self, v: datetime):
-        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
-    
     model_config = ConfigDict(revalidate_instances='always')
     
     
@@ -32,9 +27,6 @@ class RecordEdit(BaseModel):
     reponse:QuestionReponse=""
     # Store as timezone-aware UTC datetime; auto-fill on creation
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-    @field_serializer("timestamp")
-    def _serialize_timestamp(self, v: datetime):
-        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
     
     model_config = ConfigDict(revalidate_instances='always')
+    

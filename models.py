@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
-from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from schemes.settingsSchemes import SettingsUpdateScheme
 from errors import UserError,SettingsError,CompanyError,BadInputError
@@ -140,8 +140,33 @@ class User():
                 ic(result)
                 return result.inserted_id
     
-    async def register_many(self,data:list[UserRegisterScheme]):
-        pass
+    async def register_many(self,company_id:str,userdata:list[UserRegisterPasswordPresetScheme]):
+        # 要補之後針對departments的資料格式進行篩選
+        
+        # create accoutnsa
+        temp_users=[]
+        temp_user_ids=[]
+        departments= await Company(self.request).get_company_departmentlist()
+        try:
+            
+            for user in userdata:
+                user.company=company_id
+                user.password=token_generator(12),# 隨機產生密碼
+                
+                if user.department not in departments:
+                    raise BadInputError("User Department data error, please check and try again.")
+                
+                user_id = await User(self.request).register(user)
+                temp_user_ids.append(user_id)
+
+            # send email
+            ic(temp_users)
+            ic(temp_user_ids)
+            return "ok"
+        except Exception as e:
+            for id in temp_user_ids:
+                await User(self.request).delete({"_id":id})
+            raise CompanyError(str(e))
     
     async def forget(self):
         pass
@@ -220,9 +245,10 @@ class KnowledgeBase():
             raise SettingsError("Not logged in")
         
     async def create_knowledge(self,data:KnowledgeSchemeCreate):
-        return await self.knowledge.insert_one(data.model_dump())
-        
-
+        ic(data.model_dump())
+        result=await self.knowledge.insert_one(data.model_dump())
+        return result.inserted_id
+    
     async def get_maincategory(self):# Request本身只是class不是物件
         current_settings=Settings(self.request)
         result = await current_settings.get_settings()
@@ -294,43 +320,8 @@ class Company():
         return result
     
     async def setup_company_structure(self,company_id:str,departments:CompanyStructureSetupScheme):
-        # 要補之後針對departments的資料格式進行篩選
-        
-        # create accoutns
-        temp_users=[]
-        temp_user_ids=[]
-        db_departments = [] #map into db format
-        try:
-            
-            for dep in departments.departments:
-                temp_user= UserRegisterScheme( #所有的付值都需要await嗎
-                    name=dep.person_in_charge.name,
-                    password=token_generator(12),
-                    username=dep.person_in_charge.email,
-                    company_id=company_id
-                )
-                
-                user_id = await User(self.request).register(temp_user)
-                temp_user_ids.append(user_id)
-                db_departments.append({
-                    "department_name": dep.department_name,
-                    "parent_department": dep.parent_department,
-                    "role": dep.role,
-                    "person_in_charge_id": str(user_id),  # 注意轉成 str，避免 BSON 泄漏到前端
-                })
-
-            # send email
-            ic(temp_users)
-            ic(temp_user_ids)
-            
-            ic(db_departments)
-            
-            await self.edit_company(company_id, {"departments": db_departments})
-            return "ok"
-        except Exception as e:
-            for id in temp_user_ids:
-                await User(self.request).delete({"_id":id})
-            raise CompanyError(str(e))
+        await self.edit_company(company_id, departments.model_dump(exclude_none=True,exclude_unset=True))
+        return "ok"
     
     async def get_company_departmentlist(self,company_id:str):
         oid=ObjectId(company_id)
@@ -338,7 +329,11 @@ class Company():
         if not result:
             raise BadInputError("Company not found ")
         
-        return list(result['departments'].keys())
+        data=[]
+        for i in result['departments']:
+            data.append(i['department_name'])
+        
+        return data
     
     
     async def create_company(self,data:CompanyScheme):
