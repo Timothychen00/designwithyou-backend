@@ -12,7 +12,7 @@ from errors import UserError, SettingsError,CompanyError,BadInputError
 from api import companyApi,knowledgeBaseApi,userApi,settingsApi
 
 origins = [    
-    "http://localhost:5500",  # 你現在前端開的網址
+    "http://localhost:5500",  # 前端開的網址
     "http://localhost:5173",
 ]
 
