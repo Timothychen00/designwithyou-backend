@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from icecream import ic
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from models import lifespan
@@ -10,6 +11,8 @@ from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from errors import UserError, SettingsError,CompanyError,BadInputError
 from api import companyApi,knowledgeBaseApi,userApi,settingsApi
 
+origins = ["*"]
+
 app = FastAPI(lifespan=lifespan)
 #模組化
 app.include_router(companyApi.router)
@@ -17,7 +20,16 @@ app.include_router(knowledgeBaseApi.router)
 app.include_router(userApi.router)
 app.include_router(settingsApi.router)
 
+# middleware
 app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 #錯誤處理
 @app.exception_handler(BadInputError)
