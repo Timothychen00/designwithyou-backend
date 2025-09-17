@@ -5,8 +5,8 @@ from icecream import ic
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
-from models import KnowledgeBase,Company,AI,User,Statistic
-from errors import BadInputError
+from models import KnowledgeBase,Company,AI,User,Statistic,Settings
+from errors import BadInputError,StatusError,AIError
 from auth import login_required
 
 router = APIRouter( tags=['KnowledgeBase'])
@@ -151,7 +151,45 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
     
     # AI generate
     # main_category
-    # sub_category
+    success=False
+    ai_result=""
+    for retry in range(3):
+        main_category=await KnowledgeBase(request).get_maincategory()
+        if not main_category:
+            raise StatusError("please setup main_category first")
+        ai_result=await AI(request).auto_tagging(main_category,data.example_question,username)
+        
+        if ai_result in main_category:
+            success=True
+            break
+        
+    if success==False:
+        raise AIError(f"AI response not expected with retried {retry} times!")
+
+    data.main_category=ai_result
+
+    success=False
+    ai_result=""
+    for retry in range(3):
+        try:
+            sub_category=await KnowledgeBase(request).get_subcategory(data.main_category)
+
+            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,username,extend=True)
+            
+            if ai_result not in sub_category:
+                await KnowledgeBase(request).add_subcategory(data.main_category,ai_result)
+            success=True
+        except:
+            success=False
+            ic(f"sub category retry {retry}")
+        # if ai_result in main_category:
+        #     success=True
+        #     break
+        
+    if success==False:
+        raise AIError(f"AI response not expected with retried {retry} times!")
+    
+    data.sub_category=ai_result
     
     result = await KnowledgeBase(request).create_knowledge(data)
     return ResponseModel(message="ok", data=result)
@@ -222,9 +260,7 @@ async def chat():
 @router.get('/api/knowledge_base/maincategory')
 async def get_maincategory_list(request:Request):
     """
-    取得主分類 (Main Categories) 的清單
-
-    權限：可公開或有登入要求（看實作是否需要 session），目前這 route 沒加 login_required，所以可能是公開或只需 login
+    取得主構面 (Main Categories) 的清單
 
     參數：
         request (Request): 請求物件
@@ -232,9 +268,25 @@ async def get_maincategory_list(request:Request):
     回傳：
         ResponseModel:
             message: 操作訊息
-            data: 主分類的清單（包含名稱、描述、啟用狀態等）
+            data: 主構面的清單
     """
     result = await KnowledgeBase(request).get_maincategory()
+    return ResponseModel(message="ok", data=result)
+
+@router.get('/api/knowledge_base/subcategory')
+async def get_subcategory_list(request:Request):
+    """
+    取得子構面 (Sub Categories) 的清單
+
+    參數：
+        request (Request): 請求物件
+
+    回傳：
+        ResponseModel:
+            message: 操作訊息
+            data: 子構面的清單
+    """
+    result = await KnowledgeBase(request).get_subcategory()
     return ResponseModel(message="ok", data=result)
 
 @router.post('/api/knowledge_base/maincategory')

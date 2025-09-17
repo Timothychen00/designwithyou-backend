@@ -27,7 +27,7 @@ class MainCategoryConfig(BaseModel):
     status: bool
 
 class MainCategoriesCreate(BaseModel): #建立的時候Field是沒有預設值的，代表每一個欄位都是必填
-    company_description:str
+    # company_description:str
     quality_management: Optional[MainCategoryConfig] = Field(..., validation_alias="品質管理", serialization_alias="品質管理")    
     warehouse_management: Optional[MainCategoryConfig] = Field(..., validation_alias="倉儲管理", serialization_alias="倉儲管理"    )
     production_management: Optional[MainCategoryConfig] = Field(..., validation_alias="生產管理", serialization_alias="生產管理"    )

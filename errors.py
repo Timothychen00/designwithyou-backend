@@ -10,4 +10,9 @@ class CompanyError(Exception):
 class BadInputError(Exception):
     pass
 
+class StatusError(Exception):
+    pass
+
+class AIError(Exception):
+    pass
 # each Error Bounding for Each Class in model 
