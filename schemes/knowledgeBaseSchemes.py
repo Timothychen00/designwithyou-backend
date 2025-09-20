@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 class KnowledgeSchemeCreate(BaseModel):
     _id:str
+    company:str
     department:list[str]=[]
     keywords:list[str]=[]
     tag:list[str] =[]
@@ -74,3 +75,20 @@ class MainCategoriesUpdateScheme(BaseModel): # useing for reset the data
     financial_management: Optional[MainCategoryConfig] = Field(None, validation_alias="財務管理", serialization_alias="財務管理"    )
     human_resources: Optional[MainCategoryConfig] = Field(None, validation_alias="人力資源", serialization_alias="人力資源"    )
     data_security_and_governance: Optional[MainCategoryConfig] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理"    )
+
+class SubCategoryAdd(BaseModel):
+    main_category:str
+    sub_category:str
+    
+class KnowledgeFilter(BaseModel):
+    main_category: Optional[str] = None
+    sub_category: Optional[str] = None
+    department: Optional[list[str]] = None
+    created_by: Optional[str] = None
+    keywords: Optional[str] = None
+    start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
+    end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
+    sort:Optional[str]=None
+    content:Optional[str]=None
+    limit:Optional[int]=None
+    satrt_index:Optional[int]=None

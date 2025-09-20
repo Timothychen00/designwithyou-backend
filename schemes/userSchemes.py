@@ -1,5 +1,7 @@
-from pydantic import BaseModel,EmailStr
+from pydantic import BaseModel,EmailStr,Field
 from typing import Literal,Optional
+
+
 
 class UserRegisterScheme(BaseModel):
     username:EmailStr # account=email
@@ -11,7 +13,7 @@ class UserRegisterScheme(BaseModel):
     role:Optional[str]="" # 角色 
     token:Optional[str]=None # permittion to create a admin account
     note:Optional[str]=""
-    department:Optional[list[str]] = list
+    department:Optional[list[str]] = Field(default_factory=list)
     
 class UserRegisterPasswordPresetScheme(BaseModel):
     username:EmailStr # account=email

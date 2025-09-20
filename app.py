@@ -1,22 +1,50 @@
+from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from icecream import ic
 from fastapi.middleware.cors import CORSMiddleware
+from openai import AsyncOpenAI
+from contextlib import asynccontextmanager
 import os
+from dotenv import load_dotenv
 
-from models import lifespan
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
-
 from errors import UserError, SettingsError,CompanyError,BadInputError
 from api import companyApi,knowledgeBaseApi,userApi,settingsApi
+
+load_dotenv()
 
 origins = [    
     "http://localhost:5500",  # 前端開的網址
     "http://localhost:5173",
 ]
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 啟動時
+    # configuring local testing env
+    connection_string = "mongodb+srv://timothychenpc:" + os.environ['DB_PASSWORD'] + "@cluster0.usqn9tz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    ic(os.environ['MODE'])
+    if os.environ['MODE'] == 'local':
+        connection_string = "mongodb://localhost:27017/"
+
+    # MongoDB Agent 
+    client = AsyncIOMotorClient(connection_string)
+    app.state.db_client = client
+    app.state.db = client["main"]
+    app.state.user = app.state.db.user
+    # OpenAI Agent
+    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    
+    try:
+        yield
+    finally:
+        client.close()
+
 app = FastAPI(lifespan=lifespan)
+    
 #模組化
 app.include_router(companyApi.router)
 app.include_router(knowledgeBaseApi.router)

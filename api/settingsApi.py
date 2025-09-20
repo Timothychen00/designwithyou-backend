@@ -2,7 +2,8 @@ from fastapi import APIRouter,Request
 
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from schemes.settingsSchemes import SettingsUpdateScheme
-from models import Settings
+from models.knowledgeModel import KnowledgeBase
+from models.settingsModel import Settings
 from auth import login_required
 
 router = APIRouter( tags=['Settings'])

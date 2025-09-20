@@ -3,9 +3,14 @@ from typing import Optional
 from icecream import ic
 
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
-from models import KnowledgeBase,Company,AI,User,Statistic,Settings
+from models.knowledgeModel import KnowledgeBase
+from models.companyModel import Company
+from models.userModel import User
+from models.statisticsModel import Statistic
+from models.aiModel import AI
+from models.settingsModel import Settings
 from errors import BadInputError,StatusError,AIError
 from auth import login_required
 
@@ -45,7 +50,7 @@ async def create_knowledge_base(request: Request ,main_category:MainCategoriesCr
         - main_category 資料不符合 schema 驗證會丟出 validation error
         - 資料庫操作失敗可能拋出其他例外
     '''
-    company_id=user_session['company_id']
+    company_id=user_session["company"]
     ic(company_id)
     result={}
     result['category']=await KnowledgeBase(request).create_maincategory(main_category)
@@ -77,42 +82,68 @@ async def dispense_department(request:Request,data:DispenseDepartment):
     return ResponseModel(message="ok", data=result)
 
 @router.get("/api/knowledge_base/knowledge")
-async def get_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="normal"))):
+async def get_knowledge(request:Request,data_filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
     """
-    讀取／搜尋知識條目 (Knowledge Items)
+    查詢知識庫條目（Knowledge Items），可依多種條件篩選，並根據使用者部門權限限制結果範圍。
 
-    權限：最低為 normal
+    權限：需登入且具備 normal 權限等級。
 
     參數：
-        request (Request): 請求物件，用以取得例如 company 或 user 資訊
-        data (KnowledgeSchemeCreate): 查詢條件，例如主分類、副分類、關鍵字等
-        user_session: 登入後的使用者資訊，至少為 normal 權限
+        request (Request): FastAPI 請求物件
+        data_filter (KnowledgeFilter): 查詢條件過濾器，支援以下欄位：
+            - main_category: 多個主分類名稱
+            - sub_category: 多個子分類名稱
+            - department: 多個部門（此欄位由系統根據登入者自動設定）
+            - created_by: 建立者使用者名稱
+            - keyword: 搜索keywords欄位
+            - content:模糊搜索【問題】
+            - start_time, end_time: 篩選 timestamp 時間範圍
+            - limit: 回傳最大筆數（若未指定，則預設查全部）
+            - start_index: 起始筆數（用於分頁）
+        user_session (dict): 授權中介層注入的登入者資訊（含 username、company_id）
 
-    處理流程：
-        1. 依 username 拿到 user profile（含 company_id, department 等）
-        2. 把使用者的 department 放入 data.department，以確保查詢依部門權限過濾
-        3. 呼叫 KnowledgeBase.create_knowledge(data)（這裡名稱 “create_knowledge” 可能是查詢或建立的混用，要確認內部實作）
-        4. 返回查詢結果
+    查詢邏輯：
+        1. 從 session 中取得登入者 username
+        2. 讀取該使用者 profile，取得其所屬部門列表
+        3. 自動將部門設定進 `data_filter.department`
+        4. 將 filter 傳入 KnowledgeBase.get_knowledge()，並執行 MongoDB 查詢
 
     回傳：
         ResponseModel:
-            message: 操作訊息 ("ok" 或錯誤)
-            data: 查詢到的知識條目清單或頁面資訊
+            message: 操作狀態（"ok" 或錯誤訊息）
+            data: 符合條件的知識條目清單（List[dict]）
 
     錯誤情況：
-        - 權限不足
-        - 使用者未設定部門（department 為空）會可能造成查詢時無法分配篩選
-        - 傳入 data 欄位格式錯誤
+        - 權限不足會被 login_required 攔截
+        - 使用者不存在或無部門設定時，仍會執行查詢但部門條件為空
+        - 查詢資料庫失敗會由底層拋出例外
     """
     username = user_session['username']
     user_profile = await User(request).get_user({"username":username}) # company_id
     # department
-    data.department = user_profile.get('department')
-    result = await KnowledgeBase(request).create_knowledge(data)
+    data_filter.department = user_profile.get('department',[])
+    result = await KnowledgeBase(request).get_knowledge(data_filter)
     return ResponseModel(message="ok", data=result)
 
-@router.post("/api/knowledge_base/knowledge")
-async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
+@router.post("/api/knowledge_base/load_preset_knowledge")
+async def load_preset_knowledge(request:Request,user_session=Depends(login_required(authority="admin"))):
+    companyid = user_session['company']
+    user_profile=await User(request).get_user({"username":user_session['username']})
+    company_profile = await Company(request).get_company(companyid)
+    
+    category_dict={}
+    settings = await Settings(request).get_settings()
+    for i in settings['category']:
+        if settings['category'][i]['status']:
+            category_dict[i]=settings['category'][i]['sub']
+            
+    ic(category_dict)
+    result=await AI(request).generate_knowlege(company_profile,category_dict,user_profile,20)
+    return ResponseModel(message="ok", data=result)
+
+
+@router.post("/api/knowledge_base/knowledge/request")
+async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
     """
     建立新的知識條目 (Knowledge Item)
 
@@ -157,7 +188,7 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
         main_category=await KnowledgeBase(request).get_maincategory()
         if not main_category:
             raise StatusError("please setup main_category first")
-        ai_result=await AI(request).auto_tagging(main_category,data.example_question,username)
+        ai_result=await AI(request).auto_tagging(main_category,data.example_question,user_profile)
         
         if ai_result in main_category:
             success=True
@@ -174,7 +205,7 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
         try:
             sub_category=await KnowledgeBase(request).get_subcategory(data.main_category)
 
-            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,username,extend=True)
+            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,user_profile,extend=True)
             
             if ai_result not in sub_category:
                 await KnowledgeBase(request).add_subcategory(data.main_category,ai_result)
@@ -193,6 +224,36 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
     
     result = await KnowledgeBase(request).create_knowledge(data)
     return ResponseModel(message="ok", data=result)
+
+@router.get('/api/knowledge_base/ask')
+async def ask(request:Request,data:str,user_session=Depends(login_required(authority="normal"))):
+    profile=await User(request).get_user({"username":user_session['username']})
+    if not profile:
+        raise BadInputError("User not exist!")
+    
+    if profile['department']==[]:
+        raise BadInputError("User department unset!")
+    departments=profile['department']
+    
+    settings=await Settings(request).get_settings()
+    main_categories=settings['category']
+    
+    
+    filtered_main_categories=[]
+    for each_main_category in main_categories:
+        ic(each_main_category)
+        temp_intersection= list(set(each_main_category['access']) & set(departments))
+        ic(temp_intersection)
+        
+        if temp_intersection : # not empty  ->permitted
+            ic(each_main_category)
+            filtered_main_categories.append(each_main_category)
+    ic(filtered_main_categories)
+    
+    result = await AI(request).ask_ai()
+    return result 
+    
+
 
 @router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
 async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
@@ -215,7 +276,7 @@ async def get_knowledge_count(request:Request,user_session=Depends(login_require
         - 資料庫查詢錯誤
     """
     svc = Statistic(request)
-    company_id=user_session['company_id']
+    company_id=user_session['company']
     filter={}
     result = await svc.get_knowledge_count(company_id,filter)
     return ResponseModel(message="ok", data=result)
@@ -243,9 +304,11 @@ async def get_knowledge_count_filtered(request:Request,filter:Optional[dict]=Non
         - 查詢失敗
     """
     svc = Statistic(request)
-    company_id=user_session['company_id']
+    company_id=user_session["company"]
     if not filter:
         filter={}
+        
+    
     result = await svc.get_knowledge_count(company_id,filter)
     return ResponseModel(message="ok", data=result)
 
@@ -274,19 +337,20 @@ async def get_maincategory_list(request:Request):
     return ResponseModel(message="ok", data=result)
 
 @router.get('/api/knowledge_base/subcategory')
-async def get_subcategory_list(request:Request):
+async def get_subcategory_list(request:Request,main_category:str):
     """
     取得子構面 (Sub Categories) 的清單
 
     參數：
         request (Request): 請求物件
+        main_category:主構面名稱
 
     回傳：
         ResponseModel:
             message: 操作訊息
             data: 子構面的清單
     """
-    result = await KnowledgeBase(request).get_subcategory()
+    result = await KnowledgeBase(request).get_subcategory(main_category)
     return ResponseModel(message="ok", data=result)
 
 @router.post('/api/knowledge_base/maincategory')
@@ -348,3 +412,16 @@ async def reset_maincategory_list(request:Request):
     return ResponseModel(message="ok", data=result)
 
 
+@router.post('/api/knowledge_base/subcategory')
+async def add_subcategory(request:Request,data:SubCategoryAdd):
+    """
+    參數：
+        request (Request)
+        str (str): 子構面的建立資料
+
+    回傳：
+        ResponseModel:
+            message: 操作訊息
+    """
+    result = await KnowledgeBase(request).add_subcategory(data.main_category,data.sub_category)
+    return ResponseModel(message="ok", data=result)

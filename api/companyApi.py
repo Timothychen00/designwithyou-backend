@@ -2,7 +2,8 @@ from fastapi import APIRouter,Request,Depends,Query, Body
 
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
-from models import Company,Statistic
+from models.companyModel import Company
+from models.statisticsModel import Statistic
 from auth import login_required
 
 router = APIRouter( tags=['Company'])
@@ -10,7 +11,7 @@ router = APIRouter( tags=['Company'])
 @router.get("/api/company")
 async def get_company(request: Request,user_session=Depends(login_required(authority="admin"))):
     svc = Company(request)
-    company_id=user_session['company_id']
+    company_id=user_session["company"]
     company = await svc.get_company(company_id)
     return ResponseModel(message="ok", data=company)
 
@@ -20,10 +21,10 @@ async def create_company(request: Request, payload: CompanyScheme = None,user_se
     if not payload:
         username=user_session['username']
         company_id = await svc.create_empty_company(username)
-        return ResponseModel(message="empty company created", data={"company_id": company_id})
+        return ResponseModel(message="empty company created", data={"company": company_id})
     else:
         company_id = await svc.create_company(payload)
-        return ResponseModel(message="company created", data={"company_id": company_id})
+        return ResponseModel(message="company created", data={"company": company_id})
     
 
 @router.put("/api/company")
@@ -61,6 +62,6 @@ async def get_employee(request: Request, company_id: str ,user_session=Depends(l
 @router.get('/api/company/employee_count',tags=['Statistics'])
 async def get_employee_count(request: Request ,user_session=Depends(login_required(authority="admin"))):
     svc = Statistic(request)
-    company_id=user_session['company_id']
+    company_id=user_session["company"]
     result = await svc.get_company_employee_count(company_id)
     return ResponseModel(message="ok", data=result)

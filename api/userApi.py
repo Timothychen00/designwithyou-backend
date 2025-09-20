@@ -2,7 +2,7 @@ from fastapi import APIRouter,Request,Depends
 
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
-from models import User
+from models.userModel import User
 from auth import login_required
 
 router = APIRouter( tags=['User'])
@@ -41,7 +41,7 @@ async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,u
         Used for auto complete company for creating users (In order to fulfill this, login is required)
     """
     
-    company_id=user_session['company_id']
+    company_id=user_session["company"]
     result=await User(request).register_many(company_id,user)
     return ResponseModel(message=str(result))
 
