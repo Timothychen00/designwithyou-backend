@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from icecream import ic
+from bson import ObjectId
 
 from errors import SettingsError,BadInputError
 from tools import _ensure_model
@@ -108,7 +109,7 @@ class KnowledgeBase():
             "company": self.company  # 強制篩選公司資料
         }
         
-        for field in ["main_category", "sub_category", "created_by",'keywords']:
+        for field in ["main_category", "sub_category", "created_by",'keywords','status']:
             if field in filter_dict:
                 value = filter_dict[field]
                 if isinstance(value, list):
@@ -145,3 +146,13 @@ class KnowledgeBase():
         #generate final result
         result = await cursor.to_list()
         return result
+    
+    async def delete_knowledge(self,knowledge_id):
+        knowledge_id=ObjectId(knowledge_id)
+        return await self.knowledge.delete_many({"_id":knowledge_id})
+        
+    async def solve_knowledge(self):
+        pass
+    
+    async def edit_knowledge(self):
+        pass

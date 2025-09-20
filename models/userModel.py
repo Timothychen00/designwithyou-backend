@@ -8,7 +8,7 @@ from tools import _ensure_model,token_generator
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
-from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme,LoginHistoryRecord
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from schemes.settingsSchemes import SettingsUpdateScheme
 from .companyModel import Company
@@ -28,6 +28,7 @@ class User():
     def __init__(self,request:Request):
         db = request.app.state.db
         self.usercollection = db.user
+        self.login_history=db.login_history
         self.request=request
 
     async def login(self, user: UserLoginScheme):# Request本身只是class不是物件
@@ -37,11 +38,14 @@ class User():
             raise CustomHTTPException(status_code=404, message="account not found")
         if verify_password(user.password, doc[0]['password']):
             print('success')
-            self.request.session['login']={
+            stamp={
                 'username':user.username,
                 'authority':doc[0]['authority'],
                 "company":doc[0]['company'],
             }
+            self.request.session['login']=stamp
+            
+            await self.save_login_record(stamp)
             return 'success'
         else:
             raise CustomHTTPException(status_code=401, message="password not correct")
@@ -147,3 +151,11 @@ class User():
     async def delete(self, filter:dict):
         return await self.usercollection.delete_many(filter) #delete_many 可以適用一個或是多個
         # 為什麼這裡需要await
+    
+    async def save_login_record(self,user:LoginHistoryRecord):
+        data=_ensure_model(user,LoginHistoryRecord)
+        data_dump=data.model_dump()
+        ic(data_dump)
+        result=await self.login_history.insert_one(data_dump)
+        return result.inserted_id
+    

@@ -1,7 +1,7 @@
 from pydantic import BaseModel,EmailStr,Field
 from typing import Literal,Optional
-
-
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 class UserRegisterScheme(BaseModel):
     username:EmailStr # account=email
@@ -30,3 +30,9 @@ class UserRegisterPasswordPresetScheme(BaseModel):
 class UserLoginScheme(BaseModel):
     username:EmailStr # account=email
     password:str
+
+class LoginHistoryRecord(BaseModel):
+    username:EmailStr # account=email
+    company:str
+    authority:Literal['normal','owner','admin']='normal'
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

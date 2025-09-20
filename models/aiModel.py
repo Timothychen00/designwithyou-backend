@@ -2,13 +2,14 @@ from fastapi import FastAPI, HTTPException, Request
 from icecream import ic
 import json
 
-from errors import SettingsError,BadInputError
+from errors import SettingsError,BadInputError,AIError
 from tools import _ensure_model
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from .userModel import User
+from .knowledgeModel import KnowledgeBase
 
 class AI():
     def __init__(self,request:Request):
@@ -77,7 +78,7 @@ class AI():
         import time
         start_time = time.time()
         resp = await self.agent.responses.create(
-            model="gpt-4.1-2025-04-14",
+            model="gpt-5-nano-2025-08-07",
             #40s
         #gpt-4.1-2025-04-14
             # gpt-5-nano-2025-08-07
@@ -109,73 +110,73 @@ class AI():
             background_dict[filtered_key_map[i]]=background[i]
             
         background_dict=json.dumps(background_dict, ensure_ascii=False, indent=2).replace("{","").replace("}","").replace("\"","").replace("\'","")
-        topic=json.dumps(topic, ensure_ascii=False, indent=2).replace("{","").replace("}","").replace("\"","").replace("\'","")
+        topic_dict=json.dumps(topic, ensure_ascii=False, indent=2).replace("{","").replace("}","").replace("\"","").replace("\'","")
         ic(background_dict)
         ic(topic)
         
-        prompt=f'''
-            幫我根據以下關於使用者以及其公司的相關背景知識和產業型態特性等，為每一個主構面生成{count}個範例問題，以及其屬於的子構面。
-            這邊需要生成的問題主要是該公司的員工最有可能或是最常見的問題。
-            子構面的部分可以選擇沒有出現過的，但是不要新增和已經存在的子構面過於相近的子構面。
-            格式說明：每一行的問題分成三個部分，每一個部分用|進行分割，每一行的開頭和結尾也有|
-            例如：|問題|子構面|主構面|
-            
-            背景知識：
-            {background_dict}
-            主構面和子構面的對應關係：
-            {topic}
-            
-            以下是範例：
-            ——————————————————
-            背景知識：
-            公司名稱: 寶雅國際股份有限公司,
-            公司類型: 上櫃公司（Retail 零售通路商）,
-            公司特性: 美妝生活雜貨專賣店；產品涵蓋彩妝、保養、流行內衣袜、生活日常用品與精緻個人用品；主要客群為年輕女性；全台分店眾多；線上＋實體通路並行,
-            產業說明: 居家生活／生活日常用品零售業。寶雅除了販售歐美、日韓流行彩妝與保養品，也有內衣襪與精緻個人用品，為台灣美妝生活雜貨專賣通路領導品牌之一。
-            主構面：
-            財務管理:[現金與收銀管理]
-            
-            你的回應：
-            |每日營收結帳流程為何？|現金與收銀管理|財務管理
-            |櫃檯短溢收處理流程為何？|現金與收銀管理|財務管理
-            |收銀機異常斷電怎麼辦？|現金與收銀管理|財務管理
-            |櫃檯是否可以備有私人物品？|現金與收銀管理|財務管理
-            |是否可使用非指定銀行存現？|現金與收銀管理|財務管理
-            |收銀金庫遺失現金該怎麼處理？|現金與收銀管理|財務管理
-            |每日現金上限多少需立即存行？|現金與收銀管理|財務管理
-            |不同付款方式（現金、刷卡、行動支付）需分開記帳嗎？|現金與收銀管理|財務管理
-            |是否可代顧客收款（如超商代收）？|退換貨與退款處理|財務管理
-            |顧客現金退貨流程為何？|退換貨與退款處理|財務管理
-            |刷卡退款流程需幾天？|退換貨與退款處理|財務管理
-            |若顧客無發票是否可辦理退款？|退換貨與退款處理|財務管理
-            |退款金額是否可轉為購物金？|退換貨與退款處理|財務管理
-            |退貨紀錄是否需每月彙整？|退換貨與退款處理|財務管理
-            |哪些商品類別不得退貨？|退換貨與退款處理|財務管理
-            |退貨單據是否需雙聯？|退換貨與退款處理|財務管理
-            |顧客退貨次數過多會怎樣？|專案/活動財務控管|財務管理
-            |促銷活動如何預估財務損益？|專案/活動財務控管|財務管理
-            |聯名活動需由誰核算成本？|專案/活動財務控管|財務管理
-            |門市若自辦小型促銷是否需報備？|專案/活動財務控管|財務管理
-            
-            注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！
-        '''
-
-        result_string = await self.suggesting(prompt,user_profile)
-        ic(result_string)
-        
-                # 將 AI 回傳內容轉為 list of (question, sub_category, main_category)
-        lines = [line.strip('|') for line in result_string.strip().split('\n') if line.strip()]
-        qa_list = [line.split('|') for line in lines if len(line.split('|')) == 3]
-        knowledges = []
-        for q, sub, main in qa_list:
-            knowledges.append(KnowledgeSchemeCreate(
-                example_question=q.strip(),
-                main_category=main.strip(),
-                sub_category=sub.strip(),
-                created_by=user_profile['username'],
-                company=user_profile["company"],
-                department=user_profile['department']
+        knowledge_ids = []
+        try:
+            # for i in topic:
+            prompt=f'''
+                幫我根據以下關於使用者以及其公司的相關背景知識和產業型態特性等，為每一個主構面生成{count}個範例問題，以及其屬於的子構面。
+                這邊需要生成的問題主要是該公司的員工最有可能或是最常見的問題。
+                子構面的部分可以選擇沒有出現過的，但是不要新增和已經存在的子構面過於相近的子構面。
+                格式說明：每一行的問題分成三個部分，每一個部分用|進行分割，每一行的開頭和結尾也有|
+                例如：|問題|子構面|主構面|
                 
-            ))
-        ic(knowledges)
-        ic(len(knowledges))
+                背景知識：
+                {background_dict}
+                主構面和子構面的對應關係：
+                {topic_dict}
+                
+                以下是範例：
+                ——————————————————
+                背景知識：
+                公司名稱: 寶雅國際股份有限公司,
+                公司類型: 上櫃公司（Retail 零售通路商）,
+                公司特性: 美妝生活雜貨專賣店；產品涵蓋彩妝、保養、流行內衣袜、生活日常用品與精緻個人用品；主要客群為年輕女性；全台分店眾多；線上＋實體通路並行,
+                產業說明: 居家生活／生活日常用品零售業。寶雅除了販售歐美、日韓流行彩妝與保養品，也有內衣襪與精緻個人用品，為台灣美妝生活雜貨專賣通路領導品牌之一。
+                主構面和子構面的對應關係：
+                財務管理:[現金與收銀管理]
+                每一個主構面生成5個範例問題
+                
+                你的回應：
+                |每日營收結帳流程為何？|現金與收銀管理|財務管理
+                |櫃檯短溢收處理流程為何？|現金與收銀管理|財務管理
+                |收銀機異常斷電怎麼辦？|現金與收銀管理|財務管理
+                |櫃檯是否可以備有私人物品？|現金與收銀管理|財務管理
+                |是否可使用非指定銀行存現？|現金與收銀管理|財務管理
+                
+                注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！
+            '''
+            result_string = await self.suggesting(prompt,user_profile)
+            ic(result_string)
+                # 將 AI 回傳內容轉為 list of (question, sub_category, main_category)
+            lines = [line.strip('|') for line in result_string.strip().split('\n') if line.strip()]
+            qa_list = [line.split('|') for line in lines if len(line.split('|')) == 3]
+            
+            ic(len(qa_list))
+            if len(qa_list)!=count*len(topic):
+
+                raise AIError("Result count generated not expected!")
+
+            for q, sub, main in qa_list:
+                temp=KnowledgeSchemeCreate(
+                    example_question=q.strip(),
+                    main_category=main.strip(),
+                    sub_category=sub.strip(),
+                    created_by=user_profile['username'],
+                    company=user_profile["company"],
+                    department=user_profile['department']
+                    
+                )
+                id=await KnowledgeBase(self.request).create_knowledge(temp)
+                knowledge_ids.append(id)
+
+            ic(knowledge_ids)
+            return knowledge_ids
+        except:
+            for id in knowledge_ids:
+                await KnowledgeBase(self.request).delete_knowledge(id)
+            ic("cleared")
+            raise AIError("Result count generated not expected!")

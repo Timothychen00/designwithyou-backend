@@ -82,7 +82,7 @@ async def dispense_department(request:Request,data:DispenseDepartment):
     return ResponseModel(message="ok", data=result)
 
 @router.get("/api/knowledge_base/knowledge")
-async def get_knowledge(request:Request,data_filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
+async def get_knowledge(request:Request,data_filter:KnowledgeFilter=Depends(KnowledgeFilter),user_session=Depends(login_required(authority="normal"))):
     """
     查詢知識庫條目（Knowledge Items），可依多種條件篩選，並根據使用者部門權限限制結果範圍。
 

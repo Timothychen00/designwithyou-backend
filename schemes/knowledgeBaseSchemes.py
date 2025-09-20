@@ -92,3 +92,4 @@ class KnowledgeFilter(BaseModel):
     content:Optional[str]=None
     limit:Optional[int]=None
     satrt_index:Optional[int]=None
+    status:Optional[Literal['solved','unsolved']]=None
