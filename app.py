@@ -20,7 +20,6 @@ origins = [
     "http://localhost:5173",
 ]
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 啟動時

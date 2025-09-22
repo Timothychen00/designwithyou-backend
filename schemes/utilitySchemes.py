@@ -24,3 +24,9 @@ class CustomHTTPException(HTTPException):
         # super()本身只會拿到父物件，如果需要call 父親物件的constructor需要手動另外呼叫
         super().__init__(status_code=status_code, detail=message)
         self.data = data
+
+class BaseFilter(BaseModel):
+    limit: Optional[int] = None
+    start_index: Optional[int] = None
+    start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選。ISO 格式：2025-09-21T12:00:00")
+    end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選。ISO 格式：2025-09-21T12:00:00")

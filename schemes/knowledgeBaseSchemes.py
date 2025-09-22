@@ -2,6 +2,7 @@ from pydantic import BaseModel,EmailStr,Field,field_serializer,ConfigDict, Valid
 from typing import Literal,Optional
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+from .utilitySchemes import BaseFilter
 
 class KnowledgeSchemeCreate(BaseModel):
     _id:str
@@ -80,7 +81,7 @@ class SubCategoryAdd(BaseModel):
     main_category:str
     sub_category:str
     
-class KnowledgeFilter(BaseModel):
+class KnowledgeFilter(BaseFilter):
     main_category: Optional[str] = None
     sub_category: Optional[str] = None
     department: Optional[list[str]] = None

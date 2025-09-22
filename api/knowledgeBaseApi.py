@@ -282,33 +282,14 @@ async def get_knowledge_count(request:Request,user_session=Depends(login_require
     return ResponseModel(message="ok", data=result)
 
 @router.post('/api/knowledge_base/knowledge_count/filter',tags=['Statistics'])
-async def get_knowledge_count_filtered(request:Request,filter:Optional[dict]=None,user_session=Depends(login_required(authority="admin"))):
+async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,user_session=Depends(login_required(authority="admin"))):
     """
-    取得知識條目的數量，但可依指定條件過濾
-
-    權限：admin
-
-    參數：
-        request (Request): 請求物件
-        filter (Optional[dict]): 可選的過濾條件，例如特定主分類、副分類、部門、狀態等
-        user_session: 使用者 session，含 company_id 與權限
-
-    回傳：
-        ResponseModel:
-            message: 操作訊息
-            data: 過濾後的知識條目數量統計
-
-    錯誤情況：
-        - 權限不足
-        - filter 格式不正確
-        - 查詢失敗
     """
     svc = Statistic(request)
     company_id=user_session["company"]
     if not filter:
         filter={}
         
-    
     result = await svc.get_knowledge_count(company_id,filter)
     return ResponseModel(message="ok", data=result)
 

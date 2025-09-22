@@ -1,11 +1,13 @@
-from fastapi import APIRouter,Request,Depends
+from fastapi import APIRouter,Request,Depends,Query
 
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.userModel import User
 from auth import login_required
+from models.statisticsModel import Statistic
+from schemes.userSchemes import UserFilter,LoginHistoryFilter
 
-router = APIRouter( tags=['User'])
+router = APIRouter(prefix="/api/user",tags=['User'])
 
 @router.post("/login",response_model=ResponseModel)
 async def login(user:UserLoginScheme,request:Request):
@@ -58,3 +60,21 @@ async def check(request:Request):
 async def checkauthority(request:Request,user_session=Depends(login_required(authority="normal"))):
     return ResponseModel(message=str(request.session['login']))
 
+# modified 
+@router.post('/user_count/filter',tags=['Statistics'])
+async def get_filtered_user_count(request:Request,filter:UserFilter,active:bool=Query(False),user_session=Depends(login_required(authority="normal"))):
+    company_id=user_session['company']
+    if active:
+        result=await Statistic(request).get_active_user_count(company_id,filter)
+    else:
+        result=await Statistic(request).get_user_count(company_id,filter)
+    return ResponseModel(message="ok", data=result)
+
+@router.get('/user_count',tags=['Statistics'])
+async def get_total_user_count(request:Request,active:bool=Query(False),user_session=Depends(login_required(authority="normal"))):
+    company_id=user_session['company']
+    if active:
+        result=await Statistic(request).get_active_user_count(company_id,UserFilter())
+    else:
+        result=await Statistic(request).get_user_count(company_id,UserFilter())
+    return ResponseModel(message="ok", data=result)
