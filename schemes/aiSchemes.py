@@ -19,7 +19,6 @@ class RecordCreate(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     model_config = ConfigDict(revalidate_instances='always')
     
-    
 class RecordEdit(BaseModel):
     ask: str =""
     answer: str =""

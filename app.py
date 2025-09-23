@@ -18,6 +18,8 @@ load_dotenv()
 origins = [    
     "http://localhost:5500",  # 前端開的網址
     "http://localhost:5173",
+    "design-test.azurewebsites.net",
+    "design-test.azurewebsites.net:8181"
 ]
 
 @asynccontextmanager

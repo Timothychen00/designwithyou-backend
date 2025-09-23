@@ -41,7 +41,7 @@ class LoginHistoryRecord(BaseModel):
 class UserFilter(BaseFilter):
     username:Optional[EmailStr]=None # account=email
     name:Optional[str]=None
-    authority:Literal['normal','owner','admin']=None
+    authority:Optional[Literal['normal','owner','admin']]=None
     company:Optional[str]=None
     phone:Optional[str]=None
     role:Optional[str]=None # 角色 
