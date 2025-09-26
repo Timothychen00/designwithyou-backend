@@ -4,13 +4,14 @@ import json
 import time
 
 from errors import SettingsError,BadInputError,AIError
-from tools import _ensure_model
+from tools import _ensure_model,cosine_similarity
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from .userModel import User
 from .knowledgeModel import KnowledgeBase
+
 
 class AI():
 
@@ -165,13 +166,15 @@ class AI():
                 raise AIError("Result count generated not expected!")
 
             for q, sub, main in qa_list:
+                embed=await self.embedding(q.strip(),user_profile)
                 temp=KnowledgeSchemeCreate(
                     example_question=q.strip(),
                     main_category=main.strip(),
                     sub_category=sub.strip(),
                     created_by=user_profile['username'],
                     company=user_profile["company"],
-                    department=user_profile['department']
+                    department=user_profile['department'],
+                    embedding_example_question=embed
                     
                 )
                 id=await KnowledgeBase(self.request).create_knowledge(temp)
@@ -204,9 +207,21 @@ class AI():
         )
         self.create_record("embedding",temp_record)
         return response.data[0].embedding
-    
-    async def vector_search(self,vector:list[float],main_categories:list[str]):
+    #幫我實作
+    async def vector_search(self,content:str,main_categories:list[str],topn,by):
+        
+        vector=self.embedding(content,by)
         knowledges=await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(main_category=main_categories))
         ic(knowledges)
+        data=[]
+        for knowledge in knowledges:
+            similarity=cosine_similarity(vector,knowledge['embedding_example_question'])
+            data.append((similarity,knowledge['example_question'],str(knowledge['_id'])))
         
+        ic(data)
+        data.sort(reverse=True, key=lambda x: x[0])
+        ic(data)
+        return data[:topn]
+        
+            
         

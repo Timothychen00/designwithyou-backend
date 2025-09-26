@@ -3,7 +3,7 @@ from typing import Optional
 from icecream import ic
 
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.knowledgeModel import KnowledgeBase
 from models.companyModel import Company
@@ -22,33 +22,14 @@ async def get_knowledge_base():
     return "1"
 
 @router.post("/api/knowledge_base")
-async def create_knowledge_base(request: Request ,main_category:MainCategoriesCreate,user_session=Depends(login_required(authority="admin"))):
+async def create_knowledge_base(request: Request ,main_category:KnowledgeBaseCreate,user_session=Depends(login_required(authority="admin"))):
     '''
     Step3
     建立新的主分類 (Main Category)，同時更新公司簡介 (company_description)
 
     權限：必須為 admin
 
-    參數:
-        request (Request): FastAPI 的請求物件，內含 session、company 資訊等
-        main_category (MainCategoriesCreate): 主分類建立用的資料 scheme，應包含分類名稱、描述、是否啟用等欄位，以及公司簡介字段 (company_description)
-        user_session: 由 login_required 授權中間件提供，包含 user 的身份與公司 ID
 
-    處理流程：
-        1. 從 session 拿到 company_id
-        2. 呼叫 KnowledgeBase.create_maincategory() 建立主分類紀錄
-        3. 呼叫 Company.edit_company 更新公司描述 (company_description)
-        4. 封裝 response
-
-    回傳:
-        ResponseModel: 
-            message: 操作狀態 ("ok" 或錯誤訊息)
-            data: 包含 `category`（新建主分類的資料）與 `company_description`（更新後的公司簡介）
-
-    錯誤情況:
-        - 權限不足會被 login_required 攔截
-        - main_category 資料不符合 schema 驗證會丟出 validation error
-        - 資料庫操作失敗可能拋出其他例外
     '''
     company_id=user_session["company"]
     ic(company_id)

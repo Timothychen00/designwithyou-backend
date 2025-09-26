@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import TypeVar,Any, Dict, get_args, get_origin, Optional, List, Union
 from datetime import datetime
 import secrets
+import numpy as np
 
 def token_generator(length:int=24):
     return secrets.token_urlsafe(length)
@@ -74,3 +75,9 @@ def auto_build_mongo_filter(
             mongo_filter[time_field] = time_filter
 
     return mongo_filter
+
+
+def cosine_similarity(v1, v2):
+    v1 = np.array(v1)
+    v2 = np.array(v2)
+    return float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))

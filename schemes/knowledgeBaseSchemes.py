@@ -28,6 +28,8 @@ class MainCategoryConfig(BaseModel):
     sub: list[str] = []
     access: list[str] = []
     status: bool
+    
+
 
 class MainCategoriesCreate(BaseModel): #建立的時候Field是沒有預設值的，代表每一個欄位都是必填
     # company_description:str
@@ -47,6 +49,9 @@ class MainCategoriesCreate(BaseModel): #建立的時候Field是沒有預設值�
     # 控制「額外 key」的處理方式。
     # Pydantic 預設是 extra='ignore'（沒定義的 key 會被丟掉），
     # 你這裡改成 forbid → 沒定義的 key 會直接報錯
+    
+class KnowledgeBaseCreate(MainCategoriesCreate): #建立的時候Field是沒有預設值的，代表每一個欄位都是必填
+    company_description:str
     
 class MainCategoriesTemplate(BaseModel): # useing for reset the data
     company_description:str = ""
