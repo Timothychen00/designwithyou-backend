@@ -137,6 +137,8 @@ class KnowledgeBase():
     
         # for page saperate
         start_index = filter_dict.get("start_index", 0)
+        
+        ic(mongo_filter)
         cursor = self.knowledge.find(mongo_filter).skip(start_index)
         if 'limit' in filter_dict:
             limit = filter_dict.get("limit",0)

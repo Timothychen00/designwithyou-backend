@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from icecream import ic
 import json
+import time
 
 from errors import SettingsError,BadInputError,AIError
 from tools import _ensure_model
@@ -12,6 +13,8 @@ from .userModel import User
 from .knowledgeModel import KnowledgeBase
 
 class AI():
+
+    
     def __init__(self,request:Request):
         db = request.app.state.db
         self.collection = db.chat_history
@@ -24,6 +27,7 @@ class AI():
         data=_ensure_model(data,RecordCreate)
         data_dict = data.model_dump()
         return await self.collection.insert_one(data_dict)
+
     
     async def edit_record(self, data:RecordEdit):
         data=_ensure_model(data,RecordEdit)
@@ -180,3 +184,28 @@ class AI():
                 await KnowledgeBase(self.request).delete_knowledge(id)
             ic("cleared")
             raise AIError("Result count generated not expected!")
+
+    async def embedding(self,content:str,by):
+        start_time = time.time()
+        response = await self.agent.embeddings.create(
+            input=content,
+            model="text-embedding-3-small"
+        )
+        end_time = time.time()  
+        elapsed_seconds=end_time-start_time
+        data=response.data[0].embedding
+        temp_record=RecordCreate(
+            ask="",
+            answer=data,
+            user=by['username'],
+            type="embedding",
+            elapse_time=f"{elapsed_seconds}s",
+            company=by['company']
+        )
+        self.create_record("embedding",temp_record)
+        return response.data[0].embedding
+    
+    async def vector_search(self,vector:list[float],main_categories:list[str]):
+        knowledges=await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(main_category=main_categories))
+        ic(knowledges)
+        

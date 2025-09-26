@@ -12,6 +12,7 @@ class KnowledgeSchemeCreate(BaseModel):
     tag:list[str] =[]
     
     example_question:str
+    embedding_example_question:list[float]=Field(default_factory=list)
     example_answer:str = ""
     
     main_category:str =""
@@ -82,10 +83,10 @@ class SubCategoryAdd(BaseModel):
     sub_category:str
     
 class KnowledgeFilter(BaseFilter):
-    main_category: Optional[str] = None
-    sub_category: Optional[str] = None
+    main_category: Optional[list[str]] = None
+    sub_category: Optional[list[str]] = None
     department: Optional[list[str]] = None
-    created_by: Optional[str] = None
+    created_by: Optional[list[str]] = None
     keywords: Optional[str] = None
     start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
     end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")

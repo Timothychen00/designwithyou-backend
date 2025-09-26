@@ -82,41 +82,22 @@ async def dispense_department(request:Request,data:DispenseDepartment):
     return ResponseModel(message="ok", data=result)
 
 @router.get("/api/knowledge_base/knowledge")
-async def get_knowledge(request:Request,data_filter:KnowledgeFilter=Depends(KnowledgeFilter),user_session=Depends(login_required(authority="normal"))):
+async def get_knowledge(request:Request,user_session=Depends(login_required(authority="normal"))):
     """
-    查詢知識庫條目（Knowledge Items），可依多種條件篩選，並根據使用者部門權限限制結果範圍。
 
-    權限：需登入且具備 normal 權限等級。
+    """
+    data_filter=KnowledgeFilter()
+    username = user_session['username']
+    user_profile = await User(request).get_user({"username":username}) # company_id
+    # department
+    data_filter.department = user_profile.get('department',[])
+    result = await KnowledgeBase(request).get_knowledge(data_filter)
+    return ResponseModel(message="ok", data=result)
 
-    參數：
-        request (Request): FastAPI 請求物件
-        data_filter (KnowledgeFilter): 查詢條件過濾器，支援以下欄位：
-            - main_category: 多個主分類名稱
-            - sub_category: 多個子分類名稱
-            - department: 多個部門（此欄位由系統根據登入者自動設定）
-            - created_by: 建立者使用者名稱
-            - keyword: 搜索keywords欄位
-            - content:模糊搜索【問題】
-            - start_time, end_time: 篩選 timestamp 時間範圍
-            - limit: 回傳最大筆數（若未指定，則預設查全部）
-            - start_index: 起始筆數（用於分頁）
-        user_session (dict): 授權中介層注入的登入者資訊（含 username、company_id）
+@router.post("/api/knowledge_base/knowledge/filter")
+async def get_filtered_knowledge(request:Request,data_filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
+    """
 
-    查詢邏輯：
-        1. 從 session 中取得登入者 username
-        2. 讀取該使用者 profile，取得其所屬部門列表
-        3. 自動將部門設定進 `data_filter.department`
-        4. 將 filter 傳入 KnowledgeBase.get_knowledge()，並執行 MongoDB 查詢
-
-    回傳：
-        ResponseModel:
-            message: 操作狀態（"ok" 或錯誤訊息）
-            data: 符合條件的知識條目清單（List[dict]）
-
-    錯誤情況：
-        - 權限不足會被 login_required 攔截
-        - 使用者不存在或無部門設定時，仍會執行查詢但部門條件為空
-        - 查詢資料庫失敗會由底層拋出例外
     """
     username = user_session['username']
     user_profile = await User(request).get_user({"username":username}) # company_id
@@ -124,6 +105,8 @@ async def get_knowledge(request:Request,data_filter:KnowledgeFilter=Depends(Know
     data_filter.department = user_profile.get('department',[])
     result = await KnowledgeBase(request).get_knowledge(data_filter)
     return ResponseModel(message="ok", data=result)
+
+
 
 @router.post("/api/knowledge_base/load_preset_knowledge")
 async def load_preset_knowledge(request:Request,user_session=Depends(login_required(authority="admin"))):
@@ -242,7 +225,7 @@ async def ask(request:Request,data:str,user_session=Depends(login_required(autho
     filtered_main_categories=[]
     for each_main_category in main_categories:
         ic(each_main_category)
-        temp_intersection= list(set(each_main_category['access']) & set(departments))
+        temp_intersection= list(set(main_categories[each_main_category]['access']) & set(departments))
         ic(temp_intersection)
         
         if temp_intersection : # not empty  ->permitted
@@ -250,10 +233,10 @@ async def ask(request:Request,data:str,user_session=Depends(login_required(autho
             filtered_main_categories.append(each_main_category)
     ic(filtered_main_categories)
     
-    result = await AI(request).ask_ai()
-    return result 
+    result=await KnowledgeBase(request).get_knowledge(KnowledgeFilter(main_category=filtered_main_categories))
     
-
+    # result = await AI(request).ask_ai()
+    # return result 
 
 @router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
 async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
@@ -292,13 +275,6 @@ async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,us
         
     result = await svc.get_knowledge_count(company_id,filter)
     return ResponseModel(message="ok", data=result)
-
-@router.post('/api/knowledge_base/chat')
-async def chat():
-    AI().create_record()
-
-
-
 # maincategory
 
 @router.get('/api/knowledge_base/maincategory')
@@ -405,4 +381,9 @@ async def add_subcategory(request:Request,data:SubCategoryAdd):
             message: 操作訊息
     """
     result = await KnowledgeBase(request).add_subcategory(data.main_category,data.sub_category)
+    return ResponseModel(message="ok", data=result)
+
+@router.post('/api/knowledge_base/embedding')
+async def embedding(request:Request,data:str,user_session=Depends(login_required(authority="admin"))):
+    result = await AI(request).embedding(data,user_session)
     return ResponseModel(message="ok", data=result)

@@ -10,7 +10,7 @@ class RecordCreate(BaseModel):
     ask: str
     answer: str
     user: str
-    company:str
+    company:str=""
     status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
     type:Literal['chat','auto-tagging','suggesting']
     reponse:QuestionReponse=""
