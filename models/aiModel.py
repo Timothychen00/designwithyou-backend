@@ -209,3 +209,4 @@ class AI():
         knowledges=await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(main_category=main_categories))
         ic(knowledges)
         
+        
