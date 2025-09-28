@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from icecream import ic
 
 from errors import SettingsError,BadInputError
-from tools import _ensure_model
+from tools import _ensure_model,trace
 from bson import ObjectId
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
@@ -18,7 +18,7 @@ class Company():
         db = request.app.state.db
         self.collection = db.companies
         self.request=request
-
+    @trace
     async def create_empty_company(self, created_by: str):
         file = {
             "company_name": "",
@@ -39,16 +39,16 @@ class Company():
         }
         result = await self.collection.insert_one(file)
         return str(result.inserted_id)
-
+    @trace
     async def get_company(self,company_id):# Request本身只是class不是物件
         oid=ObjectId(company_id)
         result = await self.collection.find_one({"_id":oid})
         return result
-    
+    @trace
     async def setup_company_structure(self,company_id:str,departments:CompanyStructureSetupScheme):
         await self.edit_company(company_id, departments.model_dump(exclude_none=True,exclude_unset=True))
         return "ok"
-    
+    @trace
     async def get_company_departmentlist(self,company_id:str):
         oid=ObjectId(company_id)
         result = await self.collection.find_one({"_id":oid})
@@ -61,7 +61,7 @@ class Company():
         
         return data
     
-    
+    @trace
     async def create_company(self,data:CompanyScheme):
         file={
             "company_name":data.company_name,
@@ -82,7 +82,7 @@ class Company():
         result=await self.collection.insert_one(file)
         return str(result.inserted_id)
         
-    
+    @trace
     async def edit_company(self, company_id: str, data: dict):
         # Validate ObjectId
         # try:
@@ -113,7 +113,7 @@ class Company():
         if result.matched_count == 0:
             raise CompanyError("company not found")
         return "ok"
-    
+    @trace
     async def delete_company(self, company_id: str):
         """Delete a company document by its string id."""
         # try:

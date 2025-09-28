@@ -3,7 +3,7 @@ from icecream import ic
 from bson import ObjectId
 
 from errors import SettingsError,BadInputError
-from tools import _ensure_model
+from tools import _ensure_model,trace
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
@@ -28,12 +28,12 @@ class KnowledgeBase():
         else:
             
             raise SettingsError("Not logged in")
-        
+    @trace
     async def create_knowledge(self,data:KnowledgeSchemeCreate):
         ic(data.model_dump())
         result=await self.knowledge.insert_one(data.model_dump())
         return result.inserted_id
-    
+    @trace
     async def get_maincategory(self,filtered_status=False):# Request本身只是class不是物件
         current_settings=Settings(self.request)
         result = await current_settings.get_settings()
@@ -45,7 +45,7 @@ class KnowledgeBase():
             return result_list
         else:
             return list(result['category'].keys())
-    
+    @trace
     async def get_subcategory(self,main_category:str):# Request本身只是class不是物件
         current_settings=Settings(self.request)
         result = await current_settings.get_settings()
@@ -53,7 +53,7 @@ class KnowledgeBase():
             if i==main_category:
                 return result['category'][i]['sub']
         return []
-    
+    @trace
     async def add_subcategory(self,main_category:str,sub_category:str):# Request本身只是class不是物件
         current_settings=Settings(self.request)
         result = await current_settings.get_settings()
@@ -67,7 +67,7 @@ class KnowledgeBase():
                 
                 result['category'][i]['sub'].append(sub_category)
         result = await current_settings.update_settings({"category":result['category']})
-    
+    @trace
     async def create_maincategory(self,data:MainCategoriesCreate):
         current_settings=Settings(self.request)
         doc=await current_settings.get_settings()
@@ -76,16 +76,17 @@ class KnowledgeBase():
         return result
     
     #bug
+    @trace
     async def edit_maincategory(self,data:MainCategoriesUpdateScheme):
         current_settings=Settings(self.request)
         result = await current_settings.update_settings({"category":data.model_dump(exclude_none=True,exclude_unset=True)})
         return result
-    
+    @trace
     async def reset_maincategory(self):
         template_data=MainCategoriesTemplate().model_dump(by_alias=True,exclude="company_description")
         return await Settings(self.request).update_settings({"category":template_data})
         
-    
+    @trace
     async def dispense_department(self,data:DispenseDepartment):
         data_dict=data.model_dump(exclude_none=True,by_alias=True)
         ic(data_dict)
@@ -101,13 +102,19 @@ class KnowledgeBase():
                 ic(i)
                 ic(setting['category'][i]['status'])
         return await setting_obj.update_settings(setting)
-    
-    async def get_knowledge(self,filter:KnowledgeFilter):
+    @trace
+    async def get_knowledge(self,filter:KnowledgeFilter,include_embedding=False):
         filter_dict = filter.model_dump(exclude_none=True,exclude_unset=True)
         
         mongo_filter = {
             "company": self.company  # 強制篩選公司資料
         }
+        
+        if "_id" in filter_dict:
+            try:
+                mongo_filter["_id"]=ObjectId(value)
+            except:
+                raise BadInputError("id format error")
         
         for field in ["main_category", "sub_category", "created_by",'keywords','status']:
             if field in filter_dict:
@@ -139,7 +146,12 @@ class KnowledgeBase():
         start_index = filter_dict.get("start_index", 0)
         
         ic(mongo_filter)
-        cursor = self.knowledge.find(mongo_filter).skip(start_index)
+        
+        if include_embedding:
+            cursor = self.knowledge.find(mongo_filter).skip(start_index)
+        else:
+            cursor = self.knowledge.find(mongo_filter,projection={"embedding_example_question": 0}).skip(start_index)
+        
         if 'limit' in filter_dict:
             limit = filter_dict.get("limit",0)
             if filter_dict['limit']:
@@ -148,13 +160,13 @@ class KnowledgeBase():
         #generate final result
         result = await cursor.to_list()
         return result
-    
+    @trace
     async def delete_knowledge(self,knowledge_id):
         knowledge_id=ObjectId(knowledge_id)
         return await self.knowledge.delete_many({"_id":knowledge_id})
-        
+    @trace
     async def solve_knowledge(self):
         pass
-    
+    @trace
     async def edit_knowledge(self):
         pass

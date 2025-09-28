@@ -3,6 +3,15 @@ from pydantic import BaseModel
 from typing import TypeVar,Any, Dict, get_args, get_origin, Optional, List, Union
 from datetime import datetime
 import secrets
+import time
+from contextvars import ContextVar
+import asyncio
+import time
+import inspect
+import functools
+import inspect
+import logging
+from contextvars import ContextVar
 import numpy as np
 
 def token_generator(length:int=24):
@@ -81,3 +90,66 @@ def cosine_similarity(v1, v2):
     v1 = np.array(v1)
     v2 = np.array(v2)
     return float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+
+_trace_stack: ContextVar[List[dict]] = ContextVar("_trace_stack", default=[])
+
+def trace(func):
+    is_coroutine = asyncio.iscoroutinefunction(func)
+
+    @functools.wraps(func)
+    async def async_wrapper(*args, **kwargs):
+        stack = _trace_stack.get()
+        level = len(stack)
+        record = {
+            "name": func.__qualname__,
+            "level": level,
+            "start": time.perf_counter()
+        }
+        stack.append(record)
+        _trace_stack.set(stack)
+
+        try:
+            result = await func(*args, **kwargs)
+            return result
+        finally:
+            record["end"] = time.perf_counter()
+            record["duration"] = record["end"] - record["start"]
+            if level == 0:
+                print("\n╭─── Trace Summary ───")
+                for r in stack:
+                    indent = "│  " * r["level"]
+                    print(f"{indent}├─ {r['name']} took {r['duration']:.4f}s")
+                print("╰─────────────────────\n")
+                _trace_stack.set([])
+            else:
+                stack[level] = record
+
+    @functools.wraps(func)
+    def sync_wrapper(*args, **kwargs):
+        stack = _trace_stack.get()
+        level = len(stack)
+        record = {
+            "name": func.__qualname__,
+            "level": level,
+            "start": time.perf_counter()
+        }
+        stack.append(record)
+        _trace_stack.set(stack)
+
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            record["end"] = time.perf_counter()
+            record["duration"] = record["end"] - record["start"]
+            if level == 0:
+                print("\n╭─── Trace Summary ───")
+                for r in stack:
+                    indent = "│  " * r["level"]
+                    print(f"{indent}├─ {r['name']} took {r['duration']:.4f}s")
+                print("╰─────────────────────\n")
+                _trace_stack.set([])
+            else:
+                stack[level] = record
+
+    return async_wrapper if is_coroutine else sync_wrapper

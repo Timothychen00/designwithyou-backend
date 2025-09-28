@@ -13,15 +13,23 @@ from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from schemes.settingsSchemes import SettingsUpdateScheme
 from .companyModel import Company
 from errors import CompanyError,UserError
+from tools import trace
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # 建立好context之後基本上就只有verify和has可以使用
-
+@trace
 def verify_password(plain_password, hashed_password):
+    ic(plain_password)
+    if not plain_password or not isinstance(plain_password, str):
+        raise ValueError("Invalid plain password format (must be str, non-empty)")
+    if not hashed_password or not isinstance(hashed_password, str):
+        raise ValueError("Invalid hashed password format (must be str)")
     return pwd_context.verify(plain_password, hashed_password)
-
+@trace
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    hashed=pwd_context.hash(password)
+    print(len(hashed))
+    return hashed
 
 
 class User():
@@ -30,7 +38,7 @@ class User():
         self.usercollection = db.user
         self.login_history=db.login_history
         self.request=request
-
+    @trace
     async def login(self, user: UserLoginScheme):# Request本身只是class不是物件
 
         doc = await self.usercollection.find({"username": user.username}).to_list()
@@ -50,11 +58,11 @@ class User():
         else:
             raise CustomHTTPException(status_code=401, message="password not correct")
         
-    
+    @trace
     async def logout(self):
         self.request.session.clear()
         return "logged out!"
-    
+    @trace
     async def register(self, user:UserRegisterScheme):
         doc= await self.usercollection.find({'username':user.username}).to_list()# real action happens when .to_list()
         if len(doc)!=0:
@@ -113,7 +121,7 @@ class User():
                 result=await self.usercollection.insert_one(data)
                 ic(result)
                 return result.inserted_id
-    
+    @trace
     async def register_many(self,company_id:str,userdata:list[UserRegisterPasswordPresetScheme]):
         # 要補之後針對departments的資料格式進行篩選
         
@@ -141,17 +149,17 @@ class User():
             for id in temp_user_ids:
                 await User(self.request).delete({"_id":id})
             raise CompanyError(str(e))
-    
+    @trace
     async def forget(self):
         pass
-    
+    @trace
     async def get_user(self,filter:dict):
         return await self.usercollection.find_one(filter)
-    
+    @trace
     async def delete(self, filter:dict):
         return await self.usercollection.delete_many(filter) #delete_many 可以適用一個或是多個
         # 為什麼這裡需要await
-    
+    @trace
     async def save_login_record(self,user:LoginHistoryRecord):
         data=_ensure_model(user,LoginHistoryRecord)
         data_dump=data.model_dump()

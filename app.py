@@ -2,17 +2,21 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from icecream import ic
 from fastapi.middleware.cors import CORSMiddleware
 from openai import AsyncOpenAI
 from contextlib import asynccontextmanager
+# from fastapi_profiler import PyInstrumentProfilerMiddleware
 import os
+import logging
+import time
 from dotenv import load_dotenv
 
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from errors import UserError, SettingsError,CompanyError,BadInputError
 from api import companyApi,knowledgeBaseApi,userApi,settingsApi
-
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 load_dotenv()
 
 origins = [    
@@ -61,6 +65,7 @@ app.add_middleware(
     same_site="none", 
     https_only=True
 )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -68,6 +73,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# app.add_middleware(TracingMiddleware)
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.perf_counter()  # 高精度計時器
+    response = await call_next(request)
+    process_time = time.perf_counter() - start_time
+
+    # 加入耗時 header（可選）
+    response.headers["X-Process-Time"] = f"{process_time:.4f}s"
+
+    # 自定義 log（可換成你自己的 logger）
+    logging.info(f"{request.method} {request.url.path} completed in {process_time:.4f} seconds")
+
+    return response
+
+# app.add_middleware(PyInstrumentProfilerMiddleware)
 
 #錯誤處理
 @app.exception_handler(BadInputError)

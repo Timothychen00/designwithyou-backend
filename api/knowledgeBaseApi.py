@@ -2,6 +2,7 @@ from fastapi import APIRouter,Request,Depends,Query
 from typing import Optional
 from icecream import ic
 
+from schemes.aiSchemes import KnowledgeHistoryFilter
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
@@ -13,14 +14,17 @@ from models.aiModel import AI
 from models.settingsModel import Settings
 from errors import BadInputError,StatusError,AIError
 from auth import login_required
+from tools import trace
 
 router = APIRouter( tags=['KnowledgeBase'])
 
+@trace
 @router.get("/api/knowledge_base")
 async def get_knowledge_base():
     pass
     return "1"
 
+@trace
 @router.post("/api/knowledge_base")
 async def create_knowledge_base(request: Request ,main_category:KnowledgeBaseCreate,user_session=Depends(login_required(authority="admin"))):
     '''
@@ -38,6 +42,7 @@ async def create_knowledge_base(request: Request ,main_category:KnowledgeBaseCre
     result['company_description']=await Company(request).edit_company(company_id,{"company_description":main_category.company_description})
     return ResponseModel(message="ok", data=result)
 
+@trace
 @router.post("/api/knowledge_base/department_authority")
 async def dispense_department(request:Request,data:DispenseDepartment):
     """
@@ -62,6 +67,7 @@ async def dispense_department(request:Request,data:DispenseDepartment):
     result = await KnowledgeBase(request).dispense_department(data)
     return ResponseModel(message="ok", data=result)
 
+@trace
 @router.get("/api/knowledge_base/knowledge")
 async def get_knowledge(request:Request,user_session=Depends(login_required(authority="normal"))):
     """
@@ -75,6 +81,7 @@ async def get_knowledge(request:Request,user_session=Depends(login_required(auth
     result = await KnowledgeBase(request).get_knowledge(data_filter)
     return ResponseModel(message="ok", data=result)
 
+@trace
 @router.post("/api/knowledge_base/knowledge/filter")
 async def get_filtered_knowledge(request:Request,data_filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
     """
@@ -88,7 +95,7 @@ async def get_filtered_knowledge(request:Request,data_filter:KnowledgeFilter,use
     return ResponseModel(message="ok", data=result)
 
 
-
+@trace
 @router.post("/api/knowledge_base/load_preset_knowledge")
 async def load_preset_knowledge(request:Request,user_session=Depends(login_required(authority="admin"))):
     companyid = user_session['company']
@@ -105,7 +112,7 @@ async def load_preset_knowledge(request:Request,user_session=Depends(login_requi
     result=await AI(request).generate_knowlege(company_profile,category_dict,user_profile,20)
     return ResponseModel(message="ok", data=result)
 
-
+@trace
 @router.post("/api/knowledge_base/knowledge/request")
 async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
     """
@@ -189,8 +196,12 @@ async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sess
     result = await KnowledgeBase(request).create_knowledge(data)
     return ResponseModel(message="ok", data=result)
 
+@trace
 @router.get('/api/knowledge_base/ask')
 async def ask(request:Request,data:str,user_session=Depends(login_required(authority="normal"))):
+    company_id=user_session['company']
+    company_data=await Company(request).get_company(company_id)
+    
     profile=await User(request).get_user({"username":user_session['username']})
     if not profile:
         raise BadInputError("User not exist!")
@@ -213,12 +224,16 @@ async def ask(request:Request,data:str,user_session=Depends(login_required(autho
             ic(each_main_category)
             filtered_main_categories.append(each_main_category)
     ic(filtered_main_categories)
-    
-    result=await KnowledgeBase(request).get_knowledge(KnowledgeFilter(main_category=filtered_main_categories))
-    
-    # result = await AI(request).ask_ai()
-    # return result 
 
+    
+    result = await AI(request).generate_chat_answer(
+        company_profile=company_data,
+        main_category=filtered_main_categories,
+        question=data
+    )
+    return ResponseModel(message="ok", data=result) 
+
+@trace
 @router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
 async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
     """
@@ -244,7 +259,7 @@ async def get_knowledge_count(request:Request,user_session=Depends(login_require
     filter={}
     result = await svc.get_knowledge_count(company_id,filter)
     return ResponseModel(message="ok", data=result)
-
+@trace
 @router.post('/api/knowledge_base/knowledge_count/filter',tags=['Statistics'])
 async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,user_session=Depends(login_required(authority="admin"))):
     """
@@ -257,7 +272,7 @@ async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,us
     result = await svc.get_knowledge_count(company_id,filter)
     return ResponseModel(message="ok", data=result)
 # maincategory
-
+@trace
 @router.get('/api/knowledge_base/maincategory')
 async def get_maincategory_list(request:Request):
     """
@@ -273,7 +288,7 @@ async def get_maincategory_list(request:Request):
     """
     result = await KnowledgeBase(request).get_maincategory()
     return ResponseModel(message="ok", data=result)
-
+@trace
 @router.get('/api/knowledge_base/subcategory')
 async def get_subcategory_list(request:Request,main_category:str):
     """
@@ -290,7 +305,7 @@ async def get_subcategory_list(request:Request,main_category:str):
     """
     result = await KnowledgeBase(request).get_subcategory(main_category)
     return ResponseModel(message="ok", data=result)
-
+@trace
 @router.post('/api/knowledge_base/maincategory')
 async def create_maincategory_list(request:Request,data:MainCategoriesCreate):
     """
@@ -309,7 +324,7 @@ async def create_maincategory_list(request:Request,data:MainCategoriesCreate):
     """
     result = await KnowledgeBase(request).create_maincategory(data)
     return ResponseModel(message="ok", data=result)
-
+@trace
 @router.put('/api/knowledge_base/maincategory')
 async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme):
     """
@@ -328,7 +343,7 @@ async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme
     """
     result = await KnowledgeBase(request).edit_maincategory(data)
     return ResponseModel(message="ok", data=result)
-
+@trace
 @router.delete('/api/knowledge_base/maincategory')
 async def reset_maincategory_list(request:Request):
     """
@@ -349,7 +364,7 @@ async def reset_maincategory_list(request:Request):
     result = await KnowledgeBase(request).reset_maincategory()
     return ResponseModel(message="ok", data=result)
 
-
+@trace
 @router.post('/api/knowledge_base/subcategory')
 async def add_subcategory(request:Request,data:SubCategoryAdd):
     """
@@ -363,8 +378,21 @@ async def add_subcategory(request:Request,data:SubCategoryAdd):
     """
     result = await KnowledgeBase(request).add_subcategory(data.main_category,data.sub_category)
     return ResponseModel(message="ok", data=result)
-
+@trace
 @router.post('/api/knowledge_base/embedding')
 async def embedding(request:Request,data:str,user_session=Depends(login_required(authority="admin"))):
     result = await AI(request).embedding(data,user_session)
+    return ResponseModel(message="ok", data=result)
+
+@trace
+@router.post('/api/knowledge_history/filter',deprecated=True)
+async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,user_session=Depends(login_required(authority="admin"))):
+    """
+    """
+    svc = Statistic(request)
+    company_id=user_session["company"]
+    if not filter:
+        filter={}
+        
+    result = await svc.count_knowledge_history(company_id,filter)
     return ResponseModel(message="ok", data=result)

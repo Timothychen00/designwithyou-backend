@@ -14,6 +14,9 @@ python-dotenv = "*"
 bson = "*"
 pydantic = {extras = ["email"], version = "*"}
 openai = "*"
+numpy = "*"
+bcrypt = "==3.2.2"
+fastapi-profiler = "*"
 
 [dev-packages]
 

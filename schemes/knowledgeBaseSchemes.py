@@ -88,6 +88,7 @@ class SubCategoryAdd(BaseModel):
     sub_category:str
     
 class KnowledgeFilter(BaseFilter):
+    _id:Optional[str]=None
     main_category: Optional[list[str]] = None
     sub_category: Optional[list[str]] = None
     department: Optional[list[str]] = None
@@ -100,3 +101,4 @@ class KnowledgeFilter(BaseFilter):
     limit:Optional[int]=None
     satrt_index:Optional[int]=None
     status:Optional[Literal['solved','unsolved']]=None
+    

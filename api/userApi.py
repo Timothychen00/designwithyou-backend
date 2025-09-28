@@ -6,19 +6,24 @@ from models.userModel import User
 from auth import login_required
 from models.statisticsModel import Statistic
 from schemes.userSchemes import UserFilter,LoginHistoryFilter
+from tools import trace
 
 router = APIRouter(prefix="/api/user",tags=['User'])
 
+
+@trace
 @router.post("/login",response_model=ResponseModel)
 async def login(user:UserLoginScheme,request:Request):
     result=await User(request).login(user)
     return ResponseModel(message=result)
 
+@trace
 @router.post("/logout",response_model=ResponseModel)
 async def logout(request:Request):
     result=await User(request).logout()
     return ResponseModel(message=result)
 
+@trace
 @router.post("/register",response_model=ResponseModel)
 async def register(user:UserRegisterScheme,request:Request):# fastapi的endpoint名稱是可以重複的，因為綁定的ref的位置而不是名稱（不像是flask）
     """
@@ -30,11 +35,13 @@ async def register(user:UserRegisterScheme,request:Request):# fastapi的endpoint
     result=await User(request).register(user)
     return ResponseModel(message=str(result))
 
+@trace
 @router.post("/delete",response_model=ResponseModel)
 async def delete_user(username:str,request:Request):# fastapi的endpoint名稱是可以重複的，因為綁定的ref的位置而不是名稱（不像是flask）
     result=await User(request).delete({"username":username})
     return ResponseModel(message=str(result))
 
+@trace
 @router.post("/register_many",response_model=ResponseModel)
 async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,user_session=Depends(login_required(authority="normal"))):# fastapi的endpoint名稱是可以重複的，因為綁定的ref的位置而不是名稱（不像是flask）
     """
@@ -47,6 +54,7 @@ async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,u
     result=await User(request).register_many(company_id,user)
     return ResponseModel(message=str(result))
 
+@trace
 @router.get("/check",response_model=ResponseModel)
 async def check(request:Request):
     if 'login' in request.session:
@@ -56,11 +64,13 @@ async def check(request:Request):
         print("no")
         raise CustomHTTPException(status_code=401,message='Not Logged In')
 
+@trace
 @router.get("/checkauth",response_model=ResponseModel)
 async def checkauthority(request:Request,user_session=Depends(login_required(authority="normal"))):
     return ResponseModel(message=str(request.session['login']))
 
 # modified 
+@trace
 @router.post('/user_count/filter',tags=['Statistics'])
 async def get_filtered_user_count(request:Request,filter:UserFilter,active:bool=Query(False),user_session=Depends(login_required(authority="normal"))):
     company_id=user_session['company']
@@ -70,6 +80,7 @@ async def get_filtered_user_count(request:Request,filter:UserFilter,active:bool=
         result=await Statistic(request).get_user_count(company_id,filter)
     return ResponseModel(message="ok", data=result)
 
+@trace
 @router.get('/user_count',tags=['Statistics'])
 async def get_total_user_count(request:Request,active:bool=Query(False),user_session=Depends(login_required(authority="normal"))):
     company_id=user_session['company']

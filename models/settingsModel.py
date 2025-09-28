@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from icecream import ic
 
 from errors import SettingsError,BadInputError
-from tools import _ensure_model
+from tools import _ensure_model,trace
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
@@ -29,7 +29,7 @@ class Settings():
             
             raise SettingsError("Not logged in")
         
-
+    @trace
     async def get_settings(self ):# Request本身只是class不是物件
         print('company',self.company)
         
@@ -48,7 +48,7 @@ class Settings():
             self.data=result[0]
             return result[0]
             
-    
+    @trace
     async def update_settings(self,data:dict | SettingsUpdateScheme):
         _data_model=_ensure_model(data,SettingsUpdateScheme)
         _data=_data_model.model_dump(exclude_none=True,exclude_unset=True,by_alias=True)
