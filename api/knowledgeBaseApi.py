@@ -4,7 +4,7 @@ from icecream import ic
 
 from schemes.aiSchemes import KnowledgeHistoryFilter
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.knowledgeModel import KnowledgeBase
 from models.companyModel import Company
@@ -90,6 +90,7 @@ async def get_filtered_knowledge(request:Request,data_filter:KnowledgeFilter,use
     username = user_session['username']
     user_profile = await User(request).get_user({"username":username}) # company_id
     # department
+    ic(data_filter)
     data_filter.department = user_profile.get('department',[])
     result = await KnowledgeBase(request).get_knowledge(data_filter)
     return ResponseModel(message="ok", data=result)
@@ -194,6 +195,28 @@ async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sess
     data.sub_category=ai_result
     
     result = await KnowledgeBase(request).create_knowledge(data)
+    return ResponseModel(message="ok", data=result)
+
+@trace
+@router.post('/api/knowledge_base/knowledge/solve')
+async def solve_knowledge(request:Request,filter:KnowledgeFilter,data:KnowledgeSchemeSolve,user_session=Depends(login_required(authority="admin"))):
+    username = user_session['username']
+    user_profile = await User(request).get_user({"username":username}) # company_id
+    # department
+    ic(filter)
+    filter.department = user_profile.get('department',[])
+    result= await KnowledgeBase(request).solve_knowledge(filter,data)
+    return ResponseModel(message="ok", data=result)
+
+@trace
+@router.put('/api/knowledge_base/knowledge')
+async def edit_knowledge(request:Request,filter:KnowledgeFilter,data:KnowledgeSchemeEdit,user_session=Depends(login_required(authority="admin"))):
+    username = user_session['username']
+    user_profile = await User(request).get_user({"username":username}) # company_id
+    # department
+    ic(filter)
+    filter.department = user_profile.get('department',[])
+    result= await KnowledgeBase(request).edit_knowledge(filter,data)
     return ResponseModel(message="ok", data=result)
 
 @trace
@@ -385,7 +408,7 @@ async def embedding(request:Request,data:str,user_session=Depends(login_required
     return ResponseModel(message="ok", data=result)
 
 @trace
-@router.post('/api/knowledge_history/filter')
+@router.post('/api/knowledge_history/knowledge_hotness/filter',tags=['Statistics'])
 async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,user_session=Depends(login_required(authority="admin"))):
     """
     """

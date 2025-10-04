@@ -37,7 +37,7 @@ class RecordEdit(BaseModel):
     
 
 class KnowledgeHistoryFilter(BaseFilter):
-    _id:Optional[str]=None
+    id: Optional[str] = Field(None, alias="_id")
     ask: str =None
     answer: str =None
     user: str=None

@@ -13,6 +13,7 @@ import inspect
 import logging
 from contextvars import ContextVar
 import numpy as np
+from errors import BadInputError
 
 def token_generator(length:int=24):
     return secrets.token_urlsafe(length)
@@ -41,6 +42,8 @@ def auto_build_mongo_filter(
     fuzzy_fields = fuzzy_fields or []
 
     for field_name, field in filter_model.model_fields.items():
+        if field_name=='id':
+            continue
         if field_name not in filter_data:
             continue  # 沒傳值就略過
         
@@ -86,6 +89,13 @@ def auto_build_mongo_filter(
         if time_filter:
             mongo_filter[time_field] = time_filter
 
+    if 'id' in filter_data:
+        try:
+            value=ObjectId(filter_data['id'])
+            mongo_filter['_id']=value
+        except:
+            raise BadInputError("id not in format")
+            
     return mongo_filter
 
 

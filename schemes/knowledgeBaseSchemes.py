@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from .utilitySchemes import BaseFilter
 
 class KnowledgeSchemeCreate(BaseModel):
-    _id:str
+    id: Optional[str] = Field(None, alias="_id")
     company:str
     department:list[str]=[]
     keywords:list[str]=[]
@@ -14,6 +14,44 @@ class KnowledgeSchemeCreate(BaseModel):
     example_question:str
     embedding_example_question:list[float]=Field(default_factory=list)
     example_answer:str = ""
+    
+    main_category:str =""
+    sub_category:str  =""
+
+    files:list[str] = []
+    status:Literal['solved','unsolved']="unsolved" #是否被解決 
+    created_by:str="" #?
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+class KnowledgeSchemeEdit(BaseModel):
+    # id: Optional[str] = Field(None, alias="_id")
+    company:str=""
+    department:list[str]=[]
+    keywords:list[str]=[]
+    tag:list[str] =[]
+    
+    example_question:str = ""
+    embedding_example_question:list[float]=Field(default_factory=list)
+    example_answer:str = ""
+    
+    main_category:str =""
+    sub_category:str  =""
+
+    files:list[str] = []
+    status:Literal['solved','unsolved']="unsolved" #是否被解決 
+    created_by:str="" #?
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+class KnowledgeSchemeSolve(BaseModel):
+    # id: Optional[str] = Field(None, alias="_id")
+    company:str=""
+    department:list[str]=[]
+    keywords:list[str]=[]
+    tag:list[str] =[]
+    
+    example_question:str=""
+    embedding_example_question:list[float]=Field(default_factory=list)
+    example_answer:str
     
     main_category:str =""
     sub_category:str  =""
@@ -88,7 +126,7 @@ class SubCategoryAdd(BaseModel):
     sub_category:str
     
 class KnowledgeFilter(BaseFilter):
-    _id:Optional[str]=None
+    id: Optional[str] = Field(None, alias="_id") # _id開頭會被忽略
     main_category: Optional[list[str]] = None
     sub_category: Optional[list[str]] = None
     department: Optional[list[str]] = None

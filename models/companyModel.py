@@ -61,6 +61,7 @@ class Company():
         
         return data
     
+    
     @trace
     async def create_company(self,data:CompanyScheme):
         file={

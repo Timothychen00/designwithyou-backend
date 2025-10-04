@@ -3,10 +3,10 @@ from icecream import ic
 from bson import ObjectId
 
 from errors import SettingsError,BadInputError
-from tools import _ensure_model,trace
+from tools import _ensure_model,trace,auto_build_mongo_filter
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter,KnowledgeSchemeSolve,KnowledgeSchemeEdit
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from schemes.settingsSchemes import SettingsUpdateScheme
@@ -110,9 +110,10 @@ class KnowledgeBase():
             "company": self.company  # 強制篩選公司資料
         }
         
-        if "_id" in filter_dict:
+        if "id" in filter_dict:
             try:
-                mongo_filter["_id"]=ObjectId(value)
+                ic('yes')
+                mongo_filter["_id"]=ObjectId(filter_dict['id'])
             except:
                 raise BadInputError("id format error")
         
@@ -160,13 +161,25 @@ class KnowledgeBase():
         #generate final result
         result = await cursor.to_list()
         return result
+    
     @trace
     async def delete_knowledge(self,knowledge_id):
         knowledge_id=ObjectId(knowledge_id)
         return await self.knowledge.delete_many({"_id":knowledge_id})
     @trace
-    async def solve_knowledge(self):
-        pass
+    async def solve_knowledge(self,filter:KnowledgeFilter,data:KnowledgeSchemeSolve):
+        mongofilter=auto_build_mongo_filter(KnowledgeFilter,filter.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None))
+        ic(mongofilter)
+        data_dump=data.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None)
+        data_dump['status']='solved'
+        result = await self.knowledge.update_one(mongofilter,{"$set":data_dump})
+        return f"matched:{result.matched_count} modified:{result.modified_count}"
+
+
+    
     @trace
-    async def edit_knowledge(self):
-        pass
+    async def edit_knowledge(self,filter:KnowledgeFilter,data:KnowledgeSchemeEdit):
+        mongofilter=auto_build_mongo_filter(KnowledgeFilter,filter.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None))
+        ic(mongofilter)
+        result = await self.knowledge.update_one(mongofilter,{"$set":data.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None)})
+        return f"matched:{result.matched_count} modified:{result.modified_count}"
