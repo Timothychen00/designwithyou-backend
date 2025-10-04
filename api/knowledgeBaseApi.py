@@ -385,7 +385,7 @@ async def embedding(request:Request,data:str,user_session=Depends(login_required
     return ResponseModel(message="ok", data=result)
 
 @trace
-@router.post('/api/knowledge_history/filter',deprecated=True)
+@router.post('/api/knowledge_history/filter')
 async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,user_session=Depends(login_required(authority="admin"))):
     """
     """

@@ -43,7 +43,7 @@ class Statistic():
     async def count_knowledge_history(self,company_id:str,filter:KnowledgeHistoryFilter):
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
         processed_filter= auto_build_mongo_filter(KnowledgeHistoryFilter,filter_dict)
-        processed_filter.update({'company':company_id,"type":"chat"})
+        processed_filter.update({'company':company_id})
         pipeline = [
             {
                 "$match": {**processed_filter,

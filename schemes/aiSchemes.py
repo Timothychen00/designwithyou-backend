@@ -41,7 +41,7 @@ class KnowledgeHistoryFilter(BaseFilter):
     ask: str =None
     answer: str =None
     user: str=None
-    type:Literal['chat','auto-tagging','suggesting']=None
+    type:Literal['chat','auto-tagging','suggesting']
     status:Literal['normal','suggest-solved','suggest-unsolved']=None
     reponse:QuestionReponse=None
     linked_knowledge_id:str=None
