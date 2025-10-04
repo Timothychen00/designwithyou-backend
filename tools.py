@@ -43,6 +43,9 @@ def auto_build_mongo_filter(
     for field_name, field in filter_model.model_fields.items():
         if field_name not in filter_data:
             continue  # 沒傳值就略過
+        
+        if field_name=='start_time' or field_name=='end_time':
+            continue
 
         value = filter_data[field_name]
         annotation = field.annotation

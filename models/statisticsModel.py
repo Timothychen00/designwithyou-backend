@@ -42,8 +42,8 @@ class Statistic():
     @trace
     async def count_knowledge_history(self,company_id:str,filter:KnowledgeHistoryFilter):
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
-        filter_dict.update({'company':company_id,"type":"chat"})
         processed_filter= auto_build_mongo_filter(KnowledgeHistoryFilter,filter_dict)
+        processed_filter.update({'company':company_id,"type":"chat"})
         pipeline = [
             {
                 "$match": {**processed_filter,
@@ -56,9 +56,8 @@ class Statistic():
             {"$sort": {"count": -1}}               # 出現次數多的在前面
         ]
 
-        # 第三步：執行聚合
         ic(pipeline)
-        result = await self.db.ask_records.aggregate(pipeline).to_list(length=None)
+        result = await self.db.chat_history.aggregate(pipeline).to_list(length=None)
         return result
     
     

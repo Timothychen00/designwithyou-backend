@@ -25,6 +25,7 @@ class RecordEdit(BaseModel):
     ask: str =""
     answer: str =""
     user: str=""
+    company:str=""
     type:Literal['chat','auto-tagging','suggesting']=""
     status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
     reponse:QuestionReponse=""

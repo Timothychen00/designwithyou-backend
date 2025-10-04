@@ -306,6 +306,7 @@ class AI():
             type="embedding",
             elapse_time=f"{elapsed_seconds}s",
             company=by['company']
+            
         )
         await self.create_record("embedding",temp_record)
         return response.data[0].embedding
