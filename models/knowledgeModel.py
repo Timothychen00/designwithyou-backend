@@ -173,13 +173,11 @@ class KnowledgeBase():
         data_dump=data.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None)
         data_dump['status']='solved'
         result = await self.knowledge.update_one(mongofilter,{"$set":data_dump})
-        return f"matched:{result.matched_count} modified:{result.modified_count}"
-
-
+        return {"matched":result.matched_count,"modified":result.modified_count}
     
     @trace
     async def edit_knowledge(self,filter:KnowledgeFilter,data:KnowledgeSchemeEdit):
         mongofilter=auto_build_mongo_filter(KnowledgeFilter,filter.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None))
         ic(mongofilter)
         result = await self.knowledge.update_one(mongofilter,{"$set":data.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None)})
-        return f"matched:{result.matched_count} modified:{result.modified_count}"
+        return {"matched":result.matched_count,"modified":result.modified_count}
