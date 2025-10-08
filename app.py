@@ -14,7 +14,7 @@ import time
 from dotenv import load_dotenv
 
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
-from errors import UserError, SettingsError,CompanyError,BadInputError
+from errors import UserError, SettingsError,CompanyError,BadInputError,AIError
 from api import companyApi,knowledgeBaseApi,userApi,settingsApi
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 load_dotenv()
@@ -90,9 +90,8 @@ async def add_process_time_header(request: Request, call_next):
 
     return response
 
-# app.add_middleware(PyInstrumentProfilerMiddleware)
-
 #錯誤處理
+@app.exception_handler(AIError)
 @app.exception_handler(BadInputError)
 @app.exception_handler(UserError)
 @app.exception_handler(SettingsError)

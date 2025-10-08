@@ -110,7 +110,7 @@ async def load_preset_knowledge(request:Request,user_session=Depends(login_requi
             category_dict[i]=settings['category'][i]['sub']
             
     ic(category_dict)
-    result=await AI(request).generate_knowlege(company_profile,category_dict,user_profile,20)
+    result=await AI(request).generate_knowlege(company_profile,category_dict,user_profile,15)
     return ResponseModel(message="ok", data=result)
 
 @trace

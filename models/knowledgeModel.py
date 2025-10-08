@@ -29,8 +29,9 @@ class KnowledgeBase():
             
             raise SettingsError("Not logged in")
     @trace
-    async def create_knowledge(self,data:KnowledgeSchemeCreate):
-        ic(data.model_dump())
+    async def create_knowledge(self,data:KnowledgeSchemeCreate,display=False):
+        if display:
+            ic(data.model_dump())
         result=await self.knowledge.insert_one(data.model_dump())
         return result.inserted_id
     @trace

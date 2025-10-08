@@ -137,6 +137,6 @@ class KnowledgeFilter(BaseFilter):
     sort:Optional[str]=None
     content:Optional[str]=None
     limit:Optional[int]=None
-    satrt_index:Optional[int]=None
+    start_time:Optional[int]=None
     status:Optional[Literal['solved','unsolved']]=None
     

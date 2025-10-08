@@ -50,10 +50,12 @@ class AI():
         return await self.collection.update_one({"_id":ObjectId(id)},{"$set":data_dict})
     @trace
     async def suggesting(self,prompt,by,instructions=""):
-        return await self.ask_ai(instructions+prompt,"suggesting",by)[0]
+        result=await self.ask_ai(instructions+prompt,"suggesting",by)
+        return result[0]
     @trace
     async def chat(self,prompt,by,instructions=""):
-        return await self.ask_ai(instructions+prompt,"chat",by)[0]
+        result= await self.ask_ai(instructions+prompt,"chat",by)
+        return result [0]
     @trace
     async def auto_tagging(self,categories:list[str],data,by,extend:bool=False,count=1,instructions=""):
         extend_bool={True:"允許",False:"不允許"}[extend]
@@ -253,7 +255,7 @@ class AI():
                 |櫃檯是否可以備有私人物品？|現金與收銀管理|財務管理
                 |是否可使用非指定銀行存現？|現金與收銀管理|財務管理
                 
-                注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！
+                注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！格式錯誤會導致系統失敗，請務必遵守格式要求！確保回答的個數也要符合要求
             '''
             result_string = await self.suggesting(prompt,user_profile)
             ic(result_string)
@@ -263,7 +265,6 @@ class AI():
             
             ic(len(qa_list))
             if len(qa_list)!=count*len(topic):
-
                 raise AIError("Result count generated not expected!")
 
             for q, sub, main in qa_list:
