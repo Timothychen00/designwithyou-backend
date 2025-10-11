@@ -31,7 +31,7 @@ def bson_to_jsonable(obj):
     return obj
 
 M = TypeVar("M", bound=BaseModel)# 讓編譯器可以看得懂
-def _ensure_model(data, model_type: type[M]) -> M:
+def _ensure_model(data:dict| type[M], model_type: type[M]) -> M:
     if isinstance(data, model_type):
         return data
     return model_type.model_validate(data)
