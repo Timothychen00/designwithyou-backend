@@ -31,7 +31,7 @@ class AI():
                 raise AIError("Not logged in")
         else:
             
-            raise SettingsError("Not logged in")
+            raise AIError("Not logged in")
 
     @trace
     async def create_record(self, record_type:str,data:RecordCreate ):

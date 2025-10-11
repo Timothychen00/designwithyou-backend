@@ -1,3 +1,6 @@
+class ActionSuggestion(Exception):
+    pass
+
 class SettingsError(Exception):
     pass
 

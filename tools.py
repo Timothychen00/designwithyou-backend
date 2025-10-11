@@ -104,65 +104,57 @@ def cosine_similarity(v1, v2):
     v2 = np.array(v2)
     return float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
 
-_trace_stack: ContextVar[List[dict]] = ContextVar("_trace_stack", default=[])
+_trace_state: ContextVar[dict[str, List[dict]]] = ContextVar("_trace_state", default=None)
+
+def _before_call(func):
+    state = _trace_state.get()
+    is_root = False
+    if state is None:
+        state = {"stack": [], "records": []}
+        _trace_state.set(state)
+        is_root = True
+
+    level = len(state["stack"])
+    record = {
+        "name": func.__qualname__,
+        "level": level,
+        "start": time.perf_counter(),
+    }
+    state["stack"].append(record)
+    state["records"].append(record)
+    return state, record, is_root
+
+def _after_call(state, record, is_root):
+    record["end"] = time.perf_counter()
+    record["duration"] = record["end"] - record["start"]
+    state["stack"].pop()
+
+    if is_root:
+        print("\n╭─── Trace Summary ───")
+        for r in state["records"]:
+            indent = "│  " * r["level"]
+            print(f"{indent}├─ {r['name']} took {r['duration']:.4f}s")
+        print("╰─────────────────────\n")
+        _trace_state.set(None)
 
 def trace(func):
     is_coroutine = asyncio.iscoroutinefunction(func)
 
-    @functools.wraps(func)
-    async def async_wrapper(*args, **kwargs):
-        stack = _trace_stack.get()
-        level = len(stack)
-        record = {
-            "name": func.__qualname__,
-            "level": level,
-            "start": time.perf_counter()
-        }
-        stack.append(record)
-        _trace_stack.set(stack)
-
-        try:
-            result = await func(*args, **kwargs)
-            return result
-        finally:
-            record["end"] = time.perf_counter()
-            record["duration"] = record["end"] - record["start"]
-            if level == 0:
-                print("\n╭─── Trace Summary ───")
-                for r in stack:
-                    indent = "│  " * r["level"]
-                    print(f"{indent}├─ {r['name']} took {r['duration']:.4f}s")
-                print("╰─────────────────────\n")
-                _trace_stack.set([])
-            else:
-                stack[level] = record
+    if is_coroutine:
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            state, record, is_root = _before_call(func)
+            try:
+                return await func(*args, **kwargs)
+            finally:
+                _after_call(state, record, is_root)
+        return async_wrapper
 
     @functools.wraps(func)
     def sync_wrapper(*args, **kwargs):
-        stack = _trace_stack.get()
-        level = len(stack)
-        record = {
-            "name": func.__qualname__,
-            "level": level,
-            "start": time.perf_counter()
-        }
-        stack.append(record)
-        _trace_stack.set(stack)
-
+        state, record, is_root = _before_call(func)
         try:
-            result = func(*args, **kwargs)
-            return result
+            return func(*args, **kwargs)
         finally:
-            record["end"] = time.perf_counter()
-            record["duration"] = record["end"] - record["start"]
-            if level == 0:
-                print("\n╭─── Trace Summary ───")
-                for r in stack:
-                    indent = "│  " * r["level"]
-                    print(f"{indent}├─ {r['name']} took {r['duration']:.4f}s")
-                print("╰─────────────────────\n")
-                _trace_stack.set([])
-            else:
-                stack[level] = record
-
-    return async_wrapper if is_coroutine else sync_wrapper
+            _after_call(state, record, is_root)
+    return sync_wrapper
