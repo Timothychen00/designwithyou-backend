@@ -4,6 +4,7 @@ from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,Compan
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.companyModel import Company
 from models.statisticsModel import Statistic
+from models.userModel import User
 from auth import login_required
 
 router = APIRouter( tags=['Company'])
@@ -54,8 +55,18 @@ async def get_departments(request: Request, company_id: str ,user_session=Depend
 
 @router.get('/api/company/employee')
 async def get_employee(request: Request, company_id: str ,user_session=Depends(login_required(authority="admin"))):
-    svc = Company(request)
-    result = await svc.get_company_departmentlist(company_id)
+    svc = User(request)
+    result = await svc.get_users({},company_id=company_id)
+    
+    mask = [
+        "username", "authority", "name", "company", "phone", "role", "note", "department"
+    ]
+    if result:
+        filtered_records = [
+            {field: record.get(field) for field in mask if field in record}
+            for record in result if record is not None
+        ]
+        result = filtered_records if isinstance(result, list) or hasattr(result, "to_list") else (filtered_records[0] if filtered_records else None)
     return ResponseModel(message="ok", data=result)
 
 

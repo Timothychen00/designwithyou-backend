@@ -153,8 +153,21 @@ class User():
     async def forget(self):
         pass
     @trace
-    async def get_user(self,filter:dict):
+    async def get_user(self,filter:dict,company_id:str=""):
+        if not filter:
+            filter={}
+        if company_id:
+            filter['company']=company_id
         return await self.usercollection.find_one(filter)
+    
+    @trace
+    async def get_users(self,filter:dict,company_id:str=""):
+        if not filter:
+            filter={}
+        if company_id:
+            filter['company']=company_id
+        return await self.usercollection.find(filter).to_list()
+    
     @trace
     async def delete(self, filter:dict):
         return await self.usercollection.delete_many(filter) #delete_many 可以適用一個或是多個
