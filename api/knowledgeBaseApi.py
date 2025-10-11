@@ -297,7 +297,7 @@ async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,us
 # maincategory
 @trace
 @router.get('/api/knowledge_base/maincategory')
-async def get_maincategory_list(request:Request):
+async def get_maincategory_list(request:Request,filtered:bool=True):
     """
     取得主構面 (Main Categories) 的清單
 
@@ -309,7 +309,7 @@ async def get_maincategory_list(request:Request):
             message: 操作訊息
             data: 主構面的清單
     """
-    result = await KnowledgeBase(request).get_maincategory()
+    result = await KnowledgeBase(request).get_maincategory(filtered)
     return ResponseModel(message="ok", data=result)
 @trace
 @router.get('/api/knowledge_base/subcategory')

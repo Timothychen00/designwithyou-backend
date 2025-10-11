@@ -41,6 +41,8 @@ class KnowledgeBase():
         if filtered_status:
             result_list=[]
             for i in result['category']:
+                ic(result['category'][i]['status'])
+                ic(bool(result['category'][i]['status']))
                 if result['category'][i]['status']:
                     result_list.append(i)
             return result_list
