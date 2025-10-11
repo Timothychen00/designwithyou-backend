@@ -17,12 +17,27 @@ class ActionSuggestionCreate(BaseModel):
     expect_outcome:str
     department:list[str]
     content:str
+    company:str
     status:Literal['']
     type:Literal['Operational',"Strategy",'Innovation']    
     request_time: datetime
     assignee:str
     records:ActionContactRecord
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+
+class ActionSuggestionEdit(BaseModel):
+    title:Optional[str]=None
+    recommand_priority:Optional[list[int,str]]=None
+    expect_outcome:Optional[str]=None
+    department:Optional[list[str]]=None
+    content:Optional[str]=None
+    request_time: Optional[datetime] = None
+    assignee:Optional[str]=None
+    records:ActionContactRecord=None
+    status:Optional[Literal['created','inprogress','done']]=None
+    type:Optional[Literal['Operational',"Strategy",'Innovation']]=None
+
 
 class ActionSuggestionFilter(BaseFilter):
     _id:Optional[str]=None
@@ -31,6 +46,7 @@ class ActionSuggestionFilter(BaseFilter):
     expect_outcome:Optional[str]=None
     department:Optional[list[str]]=None
     content:Optional[str]=None
+    company:str=None
     request_time: Optional[datetime] = None
     assignee:Optional[str]=None
     records:ActionContactRecord=None

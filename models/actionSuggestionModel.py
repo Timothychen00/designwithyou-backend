@@ -4,13 +4,15 @@ import json
 import time
 from bson import ObjectId
 
-from errors import SettingsError,BadInputError,ActionSuggestion
+from errors import SettingsError,BadInputError,ActionSuggestionError
 from tools import _ensure_model,cosine_similarity
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
+from schemes.actionSuggestionSchemes import ActionSuggestionFilter,ActionSuggestionCreate,ActionSuggestionEdit
 from .userModel import User
+from tools import auto_build_mongo_filter
 from .knowledgeModel import KnowledgeBase
 from tools import trace
 
@@ -19,7 +21,7 @@ class ActionSuggestion():
 
     def __init__(self,request:Request):
         db = request.app.state.db
-        self.collection = db.chat_history
+        self.collection = db.action_suggestion
         self.request=request
         self.user_stamp=None
         
@@ -28,7 +30,49 @@ class ActionSuggestion():
         if 'login' in self.request.session:
             self.user_stamp=self.request.session['login']
             if not self.user_stamp:
-                raise ActionSuggestion("Not logged in")
+                raise ActionSuggestionError("Not logged in")
+            
+            self.company=self.request.session['login'].get('company','')
+            ic(self.company)
+            if self.company=='':
+                raise ActionSuggestionError("No Company data")
         else:
             
-            raise ActionSuggestion("Not logged in")
+            raise ActionSuggestionError("Not logged in")
+
+    @trace
+    async def get_action_suggestion(self,data_filter:ActionSuggestionFilter | dict):
+        if isinstance(data_filter,dict):
+            data_filter=_ensure_model(data_filter,ActionSuggestionFilter)
+            
+        processed_filter = auto_build_mongo_filter(ActionSuggestionFilter,data_filter.model_dump(exclude_none=True))
+        processed_filter['company']=self.company
+        result = await self.collection.find(processed_filter).to_list()
+        return result
+
+    @trace
+    async def create_action_suggestion(self,data:ActionSuggestionCreate|dict):
+        if isinstance(data,dict):
+            data=_ensure_model(data,ActionSuggestionCreate)
+        data.company=self.company
+        data_dict=data.model_dump(exclude_defaults=True,exclude_unset=True)
+        
+        result = await self.collection.insert_one(data_dict)
+        return result.inserted_id
+    
+    @trace
+    async def edit_action_suggestion(self,data_filter:ActionSuggestionFilter,data:ActionSuggestionEdit | dict):
+        if isinstance(data,dict):
+            data_filter=_ensure_model(data,ActionSuggestionEdit)
+        data_filter.company=self.company
+
+        result = await self.collection.update_one(data_filter,data)
+        return {"matched":result.matched_count,"modified":result.modified_count}
+            
+    
+    @trace
+    async def delete_action_suggestion(self,data_filter:ActionSuggestionFilter):
+        processed_filter = auto_build_mongo_filter(ActionSuggestionFilter,data_filter.model_dump(exclude_none=True))
+        processed_filter['company']=self.company
+        result = await self.collection.delete_many(processed_filter)
+        return {"deleted_count": result.deleted_count}

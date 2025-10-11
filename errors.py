@@ -1,4 +1,4 @@
-class ActionSuggestion(Exception):
+class ActionSuggestionError(Exception):
     pass
 
 class SettingsError(Exception):

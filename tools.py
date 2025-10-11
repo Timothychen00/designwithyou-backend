@@ -13,6 +13,9 @@ import inspect
 import logging
 from contextvars import ContextVar
 import numpy as np
+import json
+import os
+import threading
 from errors import BadInputError
 
 def token_generator(length:int=24):
@@ -28,7 +31,7 @@ def bson_to_jsonable(obj):
     return obj
 
 M = TypeVar("M", bound=BaseModel)# 讓編譯器可以看得懂
-def _ensure_model(data, model_type: type[M]) -> M:
+def _ensure_model(data:dict| type[M], model_type: type[M]) -> M:
     if isinstance(data, model_type):
         return data
     return model_type.model_validate(data)
@@ -106,6 +109,69 @@ def cosine_similarity(v1, v2):
 
 _trace_state: ContextVar[dict[str, List[dict]]] = ContextVar("_trace_state", default=None)
 
+# local trace files (placed next to this module)
+_TRACE_LOG_PATH = os.path.join(os.path.dirname(__file__), "trace_calls.jsonl")
+_TRACE_AGG_PATH = os.path.join(os.path.dirname(__file__), "trace_aggregates.json")
+_TRACE_SUMMARY_PATH = os.path.join(os.path.dirname(__file__), "trace_summary.json")
+_trace_lock = threading.Lock()
+
+def _write_trace_records(records: list[dict]):
+    """Append raw call records to a JSONL log and update aggregate summary files.
+
+    Writes three files next to this module:
+    - trace_calls.jsonl : one JSON object per line for each recorded function call
+    - trace_aggregates.json : mapping of function -> stats (count, total, avg, max, last_seen)
+    - trace_summary.json : list of aggregated stats sorted by total desc (for quick inspection)
+    """
+    with _trace_lock:
+        try:
+            # append per-call entries
+            with open(_TRACE_LOG_PATH, 'a', encoding='utf-8') as f:
+                for r in records:
+                    entry = {
+                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "name": r.get("name"),
+                        "level": r.get("level"),
+                        "duration": r.get("duration"),
+                    }
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+            # load existing aggregates
+            aggregates = {}
+            if os.path.exists(_TRACE_AGG_PATH):
+                try:
+                    with open(_TRACE_AGG_PATH, 'r', encoding='utf-8') as fa:
+                        aggregates = json.load(fa)
+                except Exception:
+                    # if file corrupted or unreadable, start fresh
+                    logging.exception("Could not read existing trace aggregates, starting fresh")
+                    aggregates = {}
+
+            # update aggregates with these records
+            for r in records:
+                name = r.get("name")
+                d = float(r.get("duration", 0.0))
+                stats = aggregates.get(name, {"count": 0, "total": 0.0, "max": 0.0, "last_seen": None})
+                stats["count"] = int(stats.get("count", 0)) + 1
+                stats["total"] = float(stats.get("total", 0.0)) + d
+                stats["avg"] = stats["total"] / stats["count"]
+                stats["max"] = max(float(stats.get("max", 0.0)), d)
+                stats["last_seen"] = datetime.utcnow().isoformat() + "Z"
+                aggregates[name] = stats
+
+            # persist aggregates
+            with open(_TRACE_AGG_PATH, 'w', encoding='utf-8') as fa:
+                json.dump(aggregates, fa, ensure_ascii=False, indent=2)
+
+            # write sorted summary (by total duration desc)
+            summary = [ {"name": name, **v} for name, v in aggregates.items() ]
+            summary.sort(key=lambda x: x.get("total", 0.0), reverse=True)
+            with open(_TRACE_SUMMARY_PATH, 'w', encoding='utf-8') as fs:
+                json.dump(summary, fs, ensure_ascii=False, indent=2)
+
+        except Exception as e:
+            logging.exception("Failed to write trace records: %s", e)
+
 def _before_call(func):
     state = _trace_state.get()
     is_root = False
@@ -130,12 +196,20 @@ def _after_call(state, record, is_root):
     state["stack"].pop()
 
     if is_root:
-        print("\n╭─── Trace Summary ───")
-        for r in state["records"]:
-            indent = "│  " * r["level"]
-            print(f"{indent}├─ {r['name']} took {r['duration']:.4f}s")
-        print("╰─────────────────────\n")
-        _trace_state.set(None)
+        # write logs and update aggregates
+        try:
+            _write_trace_records(state["records"])
+        finally:
+            # keep console output for quick dev feedback
+            try:
+                print("\n╭─── Trace Summary ───")
+                for r in state["records"]:
+                    indent = "│  " * r["level"]
+                    print(f"{indent}├─ {r['name']} took {r['duration']:.4f}s")
+                print("╰─────────────────────\n")
+            except Exception:
+                pass
+            _trace_state.set(None)
 
 def trace(func):
     is_coroutine = asyncio.iscoroutinefunction(func)
