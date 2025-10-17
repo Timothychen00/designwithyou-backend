@@ -5,8 +5,7 @@ from zoneinfo import ZoneInfo
 from .utilitySchemes import BaseFilter
 
 class KnowledgeSchemeCreate(BaseModel):
-    id: Optional[str] = Field(None, alias="_id")
-    company:str
+    company:str=""
     department:list[str]=[]
     keywords:list[str]=[]
     tag:list[str] =[]
@@ -21,7 +20,11 @@ class KnowledgeSchemeCreate(BaseModel):
     files:list[str] = []
     status:Literal['solved','unsolved']="unsolved" #是否被解決 
     created_by:str="" #?
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    edit_count:int=0
+    time_stamp_created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    time_stamp_last_edit: datetime =Field(default_factory=lambda: datetime.now(timezone.utc))
+    
     
 class KnowledgeSchemeEdit(BaseModel):
     # id: Optional[str] = Field(None, alias="_id")
@@ -40,7 +43,8 @@ class KnowledgeSchemeEdit(BaseModel):
     files:list[str] = []
     status:Literal['solved','unsolved']="unsolved" #是否被解決 
     created_by:str="" #?
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    time_stamp_created: datetime = None
+    time_stamp_last_edit: datetime =Field(default_factory=lambda: datetime.now(timezone.utc))
     
 class KnowledgeSchemeSolve(BaseModel):
     # id: Optional[str] = Field(None, alias="_id")
@@ -59,7 +63,7 @@ class KnowledgeSchemeSolve(BaseModel):
     files:list[str] = []
     status:Literal['solved','unsolved']="unsolved" #是否被解決 
     created_by:str="" #?
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    time_stamp_last_edit: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class MainCategoryConfig(BaseModel):
     description: list[str] = []
@@ -132,11 +136,9 @@ class KnowledgeFilter(BaseFilter):
     department: Optional[list[str]] = None
     created_by: Optional[list[str]] = None
     keywords: Optional[str] = None
-    start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
-    end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
+    # start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
+    # end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
     sort:Optional[str]=None
     content:Optional[str]=None
-    limit:Optional[int]=None
-    start_time:Optional[int]=None
     status:Optional[Literal['solved','unsolved']]=None
     

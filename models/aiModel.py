@@ -89,7 +89,8 @@ class AI():
         挑選分類數：2
         你的回應：品質管理,客戶服務
         """
-        return await self.ask_ai(prompt,"auto-tagging",by)[0]
+        result=await self.ask_ai(prompt,"auto-tagging",by)
+        return result[0]
     @trace
     async def make_response(self,question,background,relevant,topn=10):
         prompt = f"""

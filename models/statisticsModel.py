@@ -17,6 +17,7 @@ class Statistic():
     @trace
     async def get_company_employee_count(self,company_id:str):
         return ic(await self.db.user.count_documents({'company':company_id}))
+    
     @trace
     async def get_knowledge_count(self,company_id:str,filter:KnowledgeFilter):
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
@@ -24,13 +25,24 @@ class Statistic():
         processed_filter= auto_build_mongo_filter(KnowledgeFilter,filter_dict)
         ic(processed_filter)
         return ic(await self.db.knowledge.count_documents(processed_filter))
+    
     @trace
     async def get_active_user_count(self,company_id:str,filter:UserLoginScheme):
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
         filter_dict.update({'company':company_id})
         processed_filter= auto_build_mongo_filter(UserLoginScheme,filter_dict)
         ic(processed_filter)
-        return ic(await self.db.login_history.count_documents(processed_filter))
+        
+        pipeline = [
+            {"$match": processed_filter},
+            {"$group": {"_id": "$username"}},
+            {"$count": "distinct_users"}
+        ]
+        
+        # distinct_user 是用來規定回傳的result的長相
+        result = await self.db.login_history.aggregate(pipeline).to_list(length=1)
+        return result[0]["distinct_users"] if result else 0
+        
     @trace
     async def get_user_count(self,company_id:str,filter:UserFilter):
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)

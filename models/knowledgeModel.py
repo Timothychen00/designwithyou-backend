@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from icecream import ic
 from bson import ObjectId
+from datetime import datetime, timezone
 
 from errors import SettingsError,BadInputError
 from tools import _ensure_model,trace,auto_build_mongo_filter
@@ -140,7 +141,7 @@ class KnowledgeBase():
                 time_filter["$gte"] = filter_dict["start_time"]
             if "end_time" in filter_dict:
                 time_filter["$lte"] = filter_dict["end_time"]
-            mongo_filter["timestamp"] = time_filter
+            mongo_filter["time_stamp_last_edit"] = time_filter
 
         if "keyword" in filter_dict:
             mongo_filter["example_question"] = {
@@ -175,14 +176,18 @@ class KnowledgeBase():
     async def solve_knowledge(self,filter:KnowledgeFilter,data:KnowledgeSchemeSolve):
         mongofilter=auto_build_mongo_filter(KnowledgeFilter,filter.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None))
         ic(mongofilter)
+        data.status="solved"
+        data.time_stamp_last_edit= datetime.now(timezone.utc)
         data_dump=data.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None)
-        data_dump['status']='solved'
-        result = await self.knowledge.update_one(mongofilter,{"$set":data_dump})
+        result = await self.knowledge.update_one(mongofilter,{"$set":data_dump,"$inc":{"edit_count":1}})
         return {"matched":result.matched_count,"modified":result.modified_count}
     
     @trace
     async def edit_knowledge(self,filter:KnowledgeFilter,data:KnowledgeSchemeEdit):
         mongofilter=auto_build_mongo_filter(KnowledgeFilter,filter.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None))
         ic(mongofilter)
-        result = await self.knowledge.update_one(mongofilter,{"$set":data.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None)})
+        
+        data.time_stamp_last_edit= datetime.now(timezone.utc)
+        # use $inc to increase the field number by specific valule
+        result = await self.knowledge.update_one(mongofilter,{"$set":data.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None),"$inc":{"edit_count":1}})
         return {"matched":result.matched_count,"modified":result.modified_count}

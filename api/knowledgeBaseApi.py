@@ -145,11 +145,12 @@ async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sess
     """
     username = user_session['username']
     user_profile = await User(request).get_user({"username":username}) # company_id
+    
     # department
     data.department = user_profile.get('department')
     if not data.department:
         raise BadInputError("User department is empty or disable")
-    
+    data.company=user_session['company']
     data.created_by = username
     
     # AI generate

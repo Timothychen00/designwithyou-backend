@@ -12,9 +12,9 @@ class RecordCreate(BaseModel):
     answer: str
     user: str
     company:str=""
-    department:Optional[str[list]]=None
-    main_category:Optional[str[list]]=None
-    sub_category:Optional[str[list]]=None
+    department:Optional[list[str]]=None
+    main_category:Optional[str]=None
+    sub_category:Optional[str]=None
     status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
     type:Literal['chat','auto-tagging','suggesting','embedding']
     reponse:QuestionReponse=""
@@ -29,9 +29,9 @@ class RecordEdit(BaseModel):
     answer: str =""
     user: str=""
     company:str=""
-    department:Optional[str[list]]=None
-    main_category:Optional[str[list]]=None
-    sub_category:Optional[str[list]]=None
+    department:Optional[list[str]]=None
+    main_category:Optional[str]=None
+    sub_category:Optional[str]=None
     type:Literal['chat','auto-tagging','suggesting']=""
     status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
     reponse:QuestionReponse=""
