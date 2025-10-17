@@ -1,3 +1,8 @@
 {"timestamp": "2025-10-11T12:40:49.231397Z", "name": "User.login", "level": 0, "duration": 1.2736266250140034}
 {"timestamp": "2025-10-11T12:40:49.232291Z", "name": "verify_password", "level": 1, "duration": 0.7377413749927655}
 {"timestamp": "2025-10-11T12:40:49.232341Z", "name": "User.save_login_record", "level": 1, "duration": 0.024173041980247945}
+{"timestamp": "2025-10-17T09:33:45.462369Z", "name": "User.login", "level": 0, "duration": 2.9845341669861227}
+{"timestamp": "2025-10-17T09:33:45.464565Z", "name": "verify_password", "level": 1, "duration": 1.0924400419462472}
+{"timestamp": "2025-10-17T09:33:45.464647Z", "name": "User.save_login_record", "level": 1, "duration": 0.08104470907710493}
+{"timestamp": "2025-10-17T09:33:48.416437Z", "name": "ActionSuggestion.get_action_suggestion", "level": 0, "duration": 0.043706333031877875}
+{"timestamp": "2025-10-17T09:34:07.291053Z", "name": "ActionSuggestion.get_action_suggestion", "level": 0, "duration": 0.05327916704118252}

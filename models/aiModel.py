@@ -37,6 +37,15 @@ class AI():
     async def create_record(self, record_type:str,data:RecordCreate ):
         data.type=record_type
         data=_ensure_model(data,RecordCreate)
+        
+        person_doc=await User(self.request).get_user({"username":data.user})
+        if not person_doc:
+            raise BadInputError("user not exist")
+        
+        data.department=person_doc['department']
+        data.company=person_doc['company']
+        
+        
         data_dict = data.model_dump()
         result=await self.collection.insert_one(data_dict)
         return result.inserted_id
@@ -146,8 +155,7 @@ class AI():
             answer=resp.output_text,
             user=by['username'],
             type=type,
-            elapse_time=f"{elapsed_seconds}s",
-            company=by['company']
+            elapse_time=f"{elapsed_seconds}s"
         )
         ic(temp_record)
         id= await  self.create_record(type,temp_record)
@@ -257,9 +265,7 @@ class AI():
             answer=str(data),
             user=by['username'],
             type="embedding",
-            elapse_time=f"{elapsed_seconds}s",
-            company=by['company']
-            
+            elapse_time=f"{elapsed_seconds}s"
         )
         await self.create_record("embedding",temp_record)
         return response.data[0].embedding
@@ -290,9 +296,14 @@ class AI():
             result_list = result[0].split(',')
             if result_list[1] == "None":
                 ic(result_list[0])
-                await self.edit_record(result[1],RecordEdit(linked_knowledge_id=result_list[0]))
-                print("save id into record")
                 doc = await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(_id=result_list[0]))
+                if not doc :
+                    raise AIError("Bad id generated")
+                await self.edit_record(result[1],RecordEdit(
+                    linked_knowledge_id=result_list[0],
+                    main_category=doc['main_category'],
+                    sub_category=doc['sub_category']))
+                print("save id into record")
                 ic(doc[0]['example_question'],doc[0]['example_answer'])
                 final_result = doc[0]['example_answer']
                 

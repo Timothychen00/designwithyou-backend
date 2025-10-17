@@ -30,8 +30,10 @@ class KnowledgeBase():
             raise SettingsError("Not logged in")
     @trace
     async def create_knowledge(self,data:KnowledgeSchemeCreate,display=False):
+        dumped_data=data.model_dump()
         if display:
-            ic(data.model_dump())
+            ic(dumped_data)
+        
         result=await self.knowledge.insert_one(data.model_dump())
         return result.inserted_id
     @trace
@@ -106,7 +108,7 @@ class KnowledgeBase():
                 ic(setting['category'][i]['status'])
         return await setting_obj.update_settings(setting)
     @trace
-    async def get_knowledge(self,filter:KnowledgeFilter,include_embedding=False):
+    async def get_knowledge(self,filter:KnowledgeFilter,include_embedding=False)->list:
         filter_dict = filter.model_dump(exclude_none=True,exclude_unset=True)
         
         mongo_filter = {
