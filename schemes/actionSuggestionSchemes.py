@@ -13,45 +13,42 @@ class ActionContactRecord(BaseModel):
 class ActionSuggestionCreate(BaseModel):
     # _id:str
     title:str
-    recommand_priority:list[int,str]
+    recommand_priority:tuple[int,str]
     expect_outcome:str
-    department:list[str]
     content:str
-    company:str
-    status:Literal['']
+    company:str=""
+    status:Literal['created','adopted','unadopted','inprogress','done']="created"
     type:Literal['Operational',"Strategy",'Innovation']    
-    request_time: datetime
-    assignee:str
-    records:ActionContactRecord
-    deadline_time_stamp:datetime
+    assignee:str=""
+    records:list[ActionContactRecord]=[]
+    inprogress_timestamp: datetime =""# 要完成的時間
+    deadline_time_stamp:datetime=""
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
 
 class ActionSuggestionEdit(BaseModel):
     title:Optional[str]=None
-    recommand_priority:Optional[list[int,str]]=None
+    recommand_priority:Optional[tuple[int,str]]=None
     expect_outcome:Optional[str]=None
-    department:Optional[list[str]]=None
     content:Optional[str]=None
     request_time: Optional[datetime] = None
     assignee:Optional[str]=None
-    records:ActionContactRecord=None
-    status:Optional[Literal['created','inprogress','done']]=None
+    records:list[ActionContactRecord]=None
+    inprogress_timestamp: datetime=None
+    status:Optional[Literal['created','adopted','unadopted','inprogress','done']]=None
     deadline_time_stamp:datetime=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None
 
-
 class ActionSuggestionFilter(BaseFilter):
-    _id:Optional[str]=None
+    id: Optional[str] = Field(None, alias="_id")
     title:Optional[str]=None
-    recommand_priority:Optional[list[int,str]]=None
+    recommand_priority:Optional[tuple[int,str]]=None
     expect_outcome:Optional[str]=None
-    department:Optional[list[str]]=None
     content:Optional[str]=None
     company:str=None
     request_time: Optional[datetime] = None
     assignee:Optional[str]=None
-    records:ActionContactRecord=None
-    status:Optional[Literal['created','inprogress','done']]=None
+    records:list[ActionContactRecord]=None
+    inprogress_timestamp: datetime=None
+    status:Optional[Literal['created','adopted','unadopted','inprogress','done']]=None
     deadline_time_stamp:datetime=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None

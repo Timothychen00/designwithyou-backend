@@ -8,9 +8,10 @@ from errors import SettingsError,BadInputError,ActionSuggestionError,BusinessStr
 from tools import _ensure_model,cosine_similarity
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse,KnowledgeHistoryFilter
 from schemes.actionSuggestionSchemes import ActionSuggestionFilter,ActionSuggestionCreate,ActionSuggestionEdit
-from schemes.BusinessStrategySchemes import BusinessStrategyCreate,BusinessStrategyEdit,BusinessStrategyFilter
+from schemes.BusinessStrategySchemes import BusinessStrategyCreate,BusinessStrategyEdit,BusinessStrategyFilter,BusinessStrategySummaryItem
 from schemes.knowledgeBaseSchemes import KnowledgeFilter,AggrestionKnowledgeFilter
 from .userModel import User
+from .actionSuggestionModel import ActionSuggestion
 from .settingsModel import Settings
 from .statisticsModel import Statistic
 from .aiModel import AI
@@ -25,6 +26,7 @@ class BusinessStrategy():
         self.collection = db.business_strategy
         self.request=request
         self.user_stamp=None
+        self.retry_times=3
         
         self.agent=request.app.state.agent
         
@@ -56,7 +58,7 @@ class BusinessStrategy():
         if isinstance(data,dict):
             data=_ensure_model(data,BusinessStrategyCreate)
         data.company=self.company
-        data_dict=data.model_dump(exclude_defaults=True,exclude_unset=True)
+        data_dict=data.model_dump()
         
         result = await self.collection.insert_one(data_dict)
         return result.inserted_id
@@ -80,25 +82,73 @@ class BusinessStrategy():
 
     @trace 
     async def generate_ai_strategy(self,strategy_type:str)->BusinessStrategyCreate:
-        result = await self.strategy_selected_questions(strategy_type)
-        ic(result)
-        current_settings=await Settings(self.request).get_settings()
-        readings=str(result[1])
-        ic(readings)
-        
-        #main data
-        main_category=result[0]
-        current_category=current_settings['category']
-        if not result[0] in current_category:
-            raise BadInputError("main_category not exist")
-        
-        department=current_category[result[0]]['access']
-        tags=await AI(self.request).auto_tagging([],readings,extend=True,count=4,my_model="gpt-4.1-nano",summary_tag=True)
-        ic(main_category)
-        ic(department)
-        ic(tags)
-        # tags=讓ai針對這些knowledge給一個
-         
+        action_suggestion_ids=[]
+        try:
+            result = await self.strategy_selected_questions(strategy_type)
+            ic(result)
+            current_settings=await Settings(self.request).get_settings()
+            readings=str(result[1])
+            ic(readings)
+            
+            #main data
+            main_category=result[0]
+            ic(current_settings)
+            current_category=current_settings['category']
+            if not result[0] in current_category:
+                raise BadInputError("main_category not exist")
+            
+            department=current_category[result[0]]['access']
+            tags=await AI(self.request).auto_tagging([],readings,extend=True,count=4,my_model="gpt-4.1-nano",summary_tag=True)
+            tags=tags.split(',')
+            ic(main_category)
+            ic(department)
+            ic(tags)
+
+            # tags=讓ai針對這些knowledge給一個
+            
+            # insight
+            for i in range(self.retry_times):
+                try:
+                    insights,actions = await AI(self.request).generate_insight(readings,strategy_type,3)
+                except:
+                    ic("error in retry")
+                else:
+                    break
+                    
+            ic(insights)
+            ic("insight available")
+            
+            summary_insights=[]
+            for i in insights:
+                summary_insights.append(BusinessStrategySummaryItem(title=i['title'],content=i['content']))
+            
+            # create actions
+            for i in actions:
+                ic(i['recommand_priority'])
+                id = await ActionSuggestion(self.request).create_action_suggestion(ActionSuggestionCreate(
+                    title=i['title'],
+                    content=i['content'],
+                    expect_outcome=i['expect_outcome'],
+                    recommand_priority=i['recommand_priority'],
+                    type=strategy_type
+                ))
+                action_suggestion_ids.append(id)
+            
+            strategy = BusinessStrategyCreate(
+                main_category=main_category,
+                department=department,
+                tags=tags,
+                summary=summary_insights,
+                type=strategy_type,
+                action_suggestion_id=action_suggestion_ids
+            )
+            result= await self.create_business_strategy(strategy)
+            return result
+        except Exception as e:
+            for i in action_suggestion_ids:
+                await ActionSuggestion(self.request).delete_action_suggestion(ActionSuggestionFilter(_id=i))
+            ic('actions deleted!')
+            raise BusinessStrategyError(str(e))
         
     @trace
     async def strategy_selected_questions(self,strategy_type:str)->str:

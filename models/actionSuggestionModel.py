@@ -55,10 +55,11 @@ class ActionSuggestion():
         if isinstance(data,dict):
             data=_ensure_model(data,ActionSuggestionCreate)
         data.company=self.company
-        data_dict=data.model_dump(exclude_defaults=True,exclude_unset=True)
-        
+        data.assignee=self.user_stamp['username']
+        data_dict=data.model_dump()
+
         result = await self.collection.insert_one(data_dict)
-        return result.inserted_id
+        return str(result.inserted_id)
     
     @trace
     async def edit_action_suggestion(self,data_filter:ActionSuggestionFilter,data:ActionSuggestionEdit | dict):

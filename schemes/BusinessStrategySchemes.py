@@ -16,6 +16,7 @@ class BusinessStrategyCreate(BaseModel):
     main_category:str
     type:Literal['Operational',"Strategy",'Innovation']    
     summary:list[BusinessStrategySummaryItem]
+    action_suggestion_id:list[str]
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class BusinessStrategyEdit(BaseModel):
@@ -26,13 +27,15 @@ class BusinessStrategyEdit(BaseModel):
     main_category:Optional[str]=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None    
     summary:Optional[list[BusinessStrategySummaryItem]]=None
+    action_suggestion_id:list[str]=None
     timestamp: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class BusinessStrategyFilter(BaseFilter):
-    _id:Optional[str]=None
+    id: Optional[str] = Field(None, alias="_id")
     department:Optional[list[str]]=None
     tags:Optional[list[str]]=None
     company:Optional[str]=None
     main_category:Optional[str]=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None    
+    action_suggestion_id:list[str]=None
     summary:Optional[list[BusinessStrategySummaryItem]]=None

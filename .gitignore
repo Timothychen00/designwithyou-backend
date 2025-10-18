@@ -208,3 +208,6 @@ __marimo__/
 trace_summary.json
 trace_calls.jsonl
 trace_aggregates.json
+trace_summary.json
+trace_calls.jsonl
+trace_aggregates.json

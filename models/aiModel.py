@@ -76,6 +76,7 @@ class AI():
         需要進行分類的內容：{data}。
         是否允許創建新的分類：{extend_bool}
         請幫我思考目標內容與現有分類的關係，然後從中挑選{count}個最合適的分類進行回覆。
+        分類和分類之間用,進行分割
         
         注意：回覆的時候直接回覆那個分類名稱即可，不要有任何多餘的文字和標點符號！
         """
@@ -297,7 +298,7 @@ class AI():
         data.sort(reverse=True, key=lambda x: x[0])
         ic(data[:topn])
         return data[:topn]
-            
+
     @trace
     async def generate_chat_answer(self,company_profile,main_category:str,question:str):
         relevant=await self.vector_search(question,main_category,3)
@@ -337,15 +338,77 @@ class AI():
         pass
     
     @trace
-    async def generate_insight(self,content,count=3):#洞見
-        pass
-        prompt="""
+    async def generate_insight(self,content,strategy_type,count=3):#洞見
+        if strategy_type =='Operational':
+            insight_settings="這些問題是搜尋率最高的主構面中前幾高的知識條目"
+        elif strategy_type =="Strategy":
+            insight_settings="這些問題是待解決知識條目數量最高的主構面中的幾個知識條目"
+        elif strategy_type =='Innovation':# not tested
+            insight_settings="這些問題是使用AI建議次數最多的主構面中的問題"
+
+        prompt=f"""
+        你是一名專業企業顧問，請幫我統整這這以下問題（{insight_settings}），給我{count}個關鍵洞察及相關說明，並且針對這些觀察到的問題給{count}個行動建議
+        問題：
+        {content}
+        你要輸出{count}個洞察，和{count}個行動建議，
+        行動建議的recommand_priority中：
+        推薦程度的部分需要是1~5之間的正整數，5表示極度推薦。
+        原因的部分用簡短的關鍵字描述
         
-        
+        以輸出2個洞察和2個行動建議的格式舉例如下：
+        <insights>
+        [
+        {{
+            "title":"標題",
+            "content":"描述內容"
+        }},
+        {{
+            "title":"標題",
+            "content":"描述內容"
+        }}
+        ]
+        </insights>
+        <actions>
+        [
+            {{
+                "title":"標題",
+                "content":"描述內容",
+                "recommand_priority":[推薦程度,原因],
+                "expect_outcome":"預期效果"
+            }},
+            {{
+                "title":"標題",
+                "content":"描述內容",
+                "recommand_priority":[推薦程度,原因],
+                "expect_outcome":"預期效果"
+            }},
+        ]
+        </actions>
+        注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！格式錯誤會導致系統失敗，請務必遵守格式要求！確保回答的個數也要符合要求
         """
         result = await self.ask_ai(prompt,type='suggesting')
-        return result
-    
-    @trace
-    async def generate_actionsuggestion(self,count=3):#行動建議
-        pass
+        
+        result_content=result[0]
+        insight_start=result_content.index("<insights>")
+        insight_end=result_content.index("</insights>")
+        insight_data=result_content[insight_start:insight_end].replace("<insights>","").replace("</insights>","")
+        action_start=result_content.index("<actions>")
+        action_end=result_content.index("</actions>")
+        action_data=result_content[action_start:action_end].replace("<actions>","").replace("</actions>","")
+
+        insights=json.loads(insight_data)
+        actions=json.loads(action_data)
+        if len(insights)!=count:
+            raise AIError("generated insight counts not permitted!")
+        if len(actions)!=count:
+            raise AIError("generated actions counts not permitted!")
+        
+        try:
+            for action in actions:
+                action['recommand_priority'][0]=int(action['recommand_priority'][0])
+        except:
+            raise AIError("recommand_priority type error!")
+        
+        ic(insights)
+        ic(actions)
+        return insights,actions
