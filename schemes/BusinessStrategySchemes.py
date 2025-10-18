@@ -17,7 +17,6 @@ class BusinessStrategyCreate(BaseModel):
     type:Literal['Operational',"Strategy",'Innovation']    
     summary:list[BusinessStrategySummaryItem]
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
 
 class BusinessStrategyEdit(BaseModel):
     # _id:str

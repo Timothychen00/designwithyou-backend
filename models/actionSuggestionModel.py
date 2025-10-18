@@ -45,7 +45,7 @@ class ActionSuggestion():
         if isinstance(data_filter,dict):
             data_filter=_ensure_model(data_filter,ActionSuggestionFilter)
             
-        processed_filter = auto_build_mongo_filter(ActionSuggestionFilter,data_filter.model_dump(exclude_none=True))
+        processed_filter = auto_build_mongo_filter(ActionSuggestionFilter,data_filter.model_dump(exclude_none=True),time_field='deadline_time_stamp')
         processed_filter['company']=self.company
         result = await self.collection.find(processed_filter).to_list()
         return result

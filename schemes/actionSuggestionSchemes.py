@@ -23,6 +23,7 @@ class ActionSuggestionCreate(BaseModel):
     request_time: datetime
     assignee:str
     records:ActionContactRecord
+    deadline_time_stamp:datetime
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
 
@@ -36,6 +37,7 @@ class ActionSuggestionEdit(BaseModel):
     assignee:Optional[str]=None
     records:ActionContactRecord=None
     status:Optional[Literal['created','inprogress','done']]=None
+    deadline_time_stamp:datetime=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None
 
 
@@ -51,4 +53,5 @@ class ActionSuggestionFilter(BaseFilter):
     assignee:Optional[str]=None
     records:ActionContactRecord=None
     status:Optional[Literal['created','inprogress','done']]=None
+    deadline_time_stamp:datetime=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None

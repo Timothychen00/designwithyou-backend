@@ -335,3 +335,17 @@ class AI():
     @trace 
     async def rewrite(self):
         pass
+    
+    @trace
+    async def generate_insight(self,content,count=3):#洞見
+        pass
+        prompt="""
+        
+        
+        """
+        result = await self.ask_ai(prompt,type='suggesting')
+        return result
+    
+    @trace
+    async def generate_actionsuggestion(self,count=3):#行動建議
+        pass
