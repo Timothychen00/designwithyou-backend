@@ -315,3 +315,6 @@ curl -X GET http://localhost:8000/checkauth \
     "數據安全與治理": ["總部"]
   }
 ```
+
+### Traced Report 
+python trace_report.py

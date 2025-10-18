@@ -1,1607 +1,1825 @@
-diff --git a/api/companyApi.py b/api/companyApi.py
-index 5b3d1b2..98feab6 100644
---- a/api/companyApi.py
-+++ b/api/companyApi.py
-@@ -2,7 +2,8 @@ from fastapi import APIRouter,Request,Depends,Query, Body
- 
- from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
- from schemes.utilitySchemes import CustomHTTPException,ResponseModel
--from models import Company,Statistic
-+from models.companyModel import Company
-+from models.statisticsModel import Statistic
- from auth import login_required
- 
- router = APIRouter( tags=['Company'])
-@@ -10,7 +11,7 @@ router = APIRouter( tags=['Company'])
- @router.get("/api/company")
- async def get_company(request: Request,user_session=Depends(login_required(authority="admin"))):
-     svc = Company(request)
--    company_id=user_session['company_id']
-+    company_id=user_session["company"]
-     company = await svc.get_company(company_id)
-     return ResponseModel(message="ok", data=company)
- 
-@@ -20,10 +21,10 @@ async def create_company(request: Request, payload: CompanyScheme = None,user_se
-     if not payload:
-         username=user_session['username']
-         company_id = await svc.create_empty_company(username)
--        return ResponseModel(message="empty company created", data={"company_id": company_id})
-+        return ResponseModel(message="empty company created", data={"company": company_id})
-     else:
-         company_id = await svc.create_company(payload)
--        return ResponseModel(message="company created", data={"company_id": company_id})
-+        return ResponseModel(message="company created", data={"company": company_id})
-     
- 
- @router.put("/api/company")
-@@ -61,6 +62,6 @@ async def get_employee(request: Request, company_id: str ,user_session=Depends(l
- @router.get('/api/company/employee_count',tags=['Statistics'])
- async def get_employee_count(request: Request ,user_session=Depends(login_required(authority="admin"))):
-     svc = Statistic(request)
--    company_id=user_session['company_id']
-+    company_id=user_session["company"]
-     result = await svc.get_company_employee_count(company_id)
-     return ResponseModel(message="ok", data=result)
-\ No newline at end of file
 diff --git a/api/knowledgeBaseApi.py b/api/knowledgeBaseApi.py
-index e28c98a..5c7c45d 100644
+index b96d322..c8cbbd4 100644
 --- a/api/knowledgeBaseApi.py
 +++ b/api/knowledgeBaseApi.py
-@@ -3,9 +3,14 @@ from typing import Optional
- from icecream import ic
+@@ -4,7 +4,7 @@ from icecream import ic
  
+ from schemes.aiSchemes import KnowledgeHistoryFilter
  from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
--from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
-+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter
+-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve
++from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter
  from schemes.utilitySchemes import CustomHTTPException,ResponseModel
--from models import KnowledgeBase,Company,AI,User,Statistic,Settings
-+from models.knowledgeModel import KnowledgeBase
-+from models.companyModel import Company
-+from models.userModel import User
-+from models.statisticsModel import Statistic
-+from models.aiModel import AI
-+from models.settingsModel import Settings
- from errors import BadInputError,StatusError,AIError
- from auth import login_required
+ from models.knowledgeModel import KnowledgeBase
+ from models.companyModel import Company
+@@ -83,7 +83,7 @@ async def get_knowledge(request:Request,user_session=Depends(login_required(auth
  
-@@ -45,7 +50,7 @@ async def create_knowledge_base(request: Request ,main_category:MainCategoriesCr
-         - main_category 資料不符合 schema 驗證會丟出 validation error
-         - 資料庫操作失敗可能拋出其他例外
-     '''
--    company_id=user_session['company_id']
-+    company_id=user_session["company"]
-     ic(company_id)
-     result={}
-     result['category']=await KnowledgeBase(request).create_maincategory(main_category)
-@@ -77,42 +82,68 @@ async def dispense_department(request:Request,data:DispenseDepartment):
-     return ResponseModel(message="ok", data=result)
- 
- @router.get("/api/knowledge_base/knowledge")
--async def get_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="normal"))):
-+async def get_knowledge(request:Request,data_filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
+ @trace
+ @router.post("/api/knowledge_base/knowledge/filter")
+-async def get_filtered_knowledge(request:Request,data_filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
++async def get_filtered_knowledge(request:Request,data_filter:AggrestionKnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
      """
--    讀取／搜尋知識條目 (Knowledge Items)
-+    查詢知識庫條目（Knowledge Items），可依多種條件篩選，並根據使用者部門權限限制結果範圍。
  
--    權限：最低為 normal
-+    權限：需登入且具備 normal 權限等級。
- 
-     參數：
--        request (Request): 請求物件，用以取得例如 company 或 user 資訊
--        data (KnowledgeSchemeCreate): 查詢條件，例如主分類、副分類、關鍵字等
--        user_session: 登入後的使用者資訊，至少為 normal 權限
--
--    處理流程：
--        1. 依 username 拿到 user profile（含 company_id, department 等）
--        2. 把使用者的 department 放入 data.department，以確保查詢依部門權限過濾
--        3. 呼叫 KnowledgeBase.create_knowledge(data)（這裡名稱 “create_knowledge” 可能是查詢或建立的混用，要確認內部實作）
--        4. 返回查詢結果
-+        request (Request): FastAPI 請求物件
-+        data_filter (KnowledgeFilter): 查詢條件過濾器，支援以下欄位：
-+            - main_category: 多個主分類名稱
-+            - sub_category: 多個子分類名稱
-+            - department: 多個部門（此欄位由系統根據登入者自動設定）
-+            - created_by: 建立者使用者名稱
-+            - keyword: 搜索keywords欄位
-+            - content:模糊搜索【問題】
-+            - start_time, end_time: 篩選 timestamp 時間範圍
-+            - limit: 回傳最大筆數（若未指定，則預設查全部）
-+            - start_index: 起始筆數（用於分頁）
-+        user_session (dict): 授權中介層注入的登入者資訊（含 username、company_id）
-+
-+    查詢邏輯：
-+        1. 從 session 中取得登入者 username
-+        2. 讀取該使用者 profile，取得其所屬部門列表
-+        3. 自動將部門設定進 `data_filter.department`
-+        4. 將 filter 傳入 KnowledgeBase.get_knowledge()，並執行 MongoDB 查詢
- 
-     回傳：
-         ResponseModel:
--            message: 操作訊息 ("ok" 或錯誤)
--            data: 查詢到的知識條目清單或頁面資訊
-+            message: 操作狀態（"ok" 或錯誤訊息）
-+            data: 符合條件的知識條目清單（List[dict]）
- 
-     錯誤情況：
--        - 權限不足
--        - 使用者未設定部門（department 為空）會可能造成查詢時無法分配篩選
--        - 傳入 data 欄位格式錯誤
-+        - 權限不足會被 login_required 攔截
-+        - 使用者不存在或無部門設定時，仍會執行查詢但部門條件為空
-+        - 查詢資料庫失敗會由底層拋出例外
      """
-     username = user_session['username']
-     user_profile = await User(request).get_user({"username":username}) # company_id
-     # department
--    data.department = user_profile.get('department')
--    result = await KnowledgeBase(request).create_knowledge(data)
-+    data_filter.department = user_profile.get('department',[])
-+    result = await KnowledgeBase(request).get_knowledge(data_filter)
-     return ResponseModel(message="ok", data=result)
- 
--@router.post("/api/knowledge_base/knowledge")
--async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
-+@router.post("/api/knowledge_base/load_preset_knowledge")
-+async def load_preset_knowledge(request:Request,user_session=Depends(login_required(authority="admin"))):
-+    companyid = user_session['company']
-+    user_profile=await User(request).get_user({"username":user_session['username']})
-+    company_profile = await Company(request).get_company(companyid)
-+    
-+    category_dict={}
-+    settings = await Settings(request).get_settings()
-+    for i in settings['category']:
-+        if settings['category'][i]['status']:
-+            category_dict[i]=settings['category'][i]['sub']
-+            
-+    ic(category_dict)
-+    result=await AI(request).generate_knowlege(company_profile,category_dict,user_profile,20)
-+    return ResponseModel(message="ok", data=result)
-+
-+
-+@router.post("/api/knowledge_base/knowledge/request")
-+async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
-     """
-     建立新的知識條目 (Knowledge Item)
- 
-@@ -157,7 +188,7 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
-         main_category=await KnowledgeBase(request).get_maincategory()
-         if not main_category:
-             raise StatusError("please setup main_category first")
--        ai_result=await AI(request).auto_tagging(main_category,data.example_question,username)
-+        ai_result=await AI(request).auto_tagging(main_category,data.example_question,user_profile)
-         
-         if ai_result in main_category:
-             success=True
-@@ -174,7 +205,7 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
-         try:
-             sub_category=await KnowledgeBase(request).get_subcategory(data.main_category)
- 
--            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,username,extend=True)
-+            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,user_profile,extend=True)
-             
-             if ai_result not in sub_category:
-                 await KnowledgeBase(request).add_subcategory(data.main_category,ai_result)
-@@ -194,6 +225,36 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
-     result = await KnowledgeBase(request).create_knowledge(data)
-     return ResponseModel(message="ok", data=result)
- 
-+@router.get('/api/knowledge_base/ask')
-+async def ask(request:Request,data:str,user_session=Depends(login_required(authority="normal"))):
-+    profile=await User(request).get_user({"username":user_session['username']})
-+    if not profile:
-+        raise BadInputError("User not exist!")
-+    
-+    if profile['department']==[]:
-+        raise BadInputError("User department unset!")
-+    departments=profile['department']
-+    
-+    settings=await Settings(request).get_settings()
-+    main_categories=settings['category']
-+    
-+    
-+    filtered_main_categories=[]
-+    for each_main_category in main_categories:
-+        ic(each_main_category)
-+        temp_intersection= list(set(each_main_category['access']) & set(departments))
-+        ic(temp_intersection)
-+        
-+        if temp_intersection : # not empty  ->permitted
-+            ic(each_main_category)
-+            filtered_main_categories.append(each_main_category)
-+    ic(filtered_main_categories)
-+    
-+    result = await AI(request).ask_ai()
-+    return result 
-+    
-+
-+
- @router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
- async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
-     """
-@@ -215,7 +276,7 @@ async def get_knowledge_count(request:Request,user_session=Depends(login_require
-         - 資料庫查詢錯誤
-     """
-     svc = Statistic(request)
--    company_id=user_session['company_id']
-+    company_id=user_session['company']
-     filter={}
-     result = await svc.get_knowledge_count(company_id,filter)
-     return ResponseModel(message="ok", data=result)
-@@ -243,9 +304,11 @@ async def get_knowledge_count_filtered(request:Request,filter:Optional[dict]=Non
-         - 查詢失敗
-     """
-     svc = Statistic(request)
--    company_id=user_session['company_id']
-+    company_id=user_session["company"]
-     if not filter:
-         filter={}
-+        
-+    
-     result = await svc.get_knowledge_count(company_id,filter)
-     return ResponseModel(message="ok", data=result)
- 
-@@ -274,19 +337,20 @@ async def get_maincategory_list(request:Request):
-     return ResponseModel(message="ok", data=result)
- 
- @router.get('/api/knowledge_base/subcategory')
--async def get_subcategory_list(request:Request):
-+async def get_subcategory_list(request:Request,main_category:str):
-     """
-     取得子構面 (Sub Categories) 的清單
- 
-     參數：
-         request (Request): 請求物件
-+        main_category:主構面名稱
- 
-     回傳：
-         ResponseModel:
-             message: 操作訊息
-             data: 子構面的清單
-     """
--    result = await KnowledgeBase(request).get_subcategory()
-+    result = await KnowledgeBase(request).get_subcategory(main_category)
-     return ResponseModel(message="ok", data=result)
- 
- @router.post('/api/knowledge_base/maincategory')
-@@ -348,3 +412,16 @@ async def reset_maincategory_list(request:Request):
-     return ResponseModel(message="ok", data=result)
- 
- 
-+@router.post('/api/knowledge_base/subcategory')
-+async def add_subcategory(request:Request,data:SubCategoryAdd):
-+    """
-+    參數：
-+        request (Request)
-+        str (str): 子構面的建立資料
-+
-+    回傳：
-+        ResponseModel:
-+            message: 操作訊息
-+    """
-+    result = await KnowledgeBase(request).add_subcategory(data.main_category,data.sub_category)
-+    return ResponseModel(message="ok", data=result)
-\ No newline at end of file
-diff --git a/api/settingsApi.py b/api/settingsApi.py
-index 6216edc..d53ba59 100644
---- a/api/settingsApi.py
-+++ b/api/settingsApi.py
-@@ -2,7 +2,8 @@ from fastapi import APIRouter,Request
- 
- from schemes.utilitySchemes import CustomHTTPException,ResponseModel
- from schemes.settingsSchemes import SettingsUpdateScheme
--from models import Settings
-+from models.knowledgeModel import KnowledgeBase
-+from models.settingsModel import Settings
- from auth import login_required
- 
- router = APIRouter( tags=['Settings'])
-diff --git a/api/userApi.py b/api/userApi.py
-index 923637c..3026811 100644
---- a/api/userApi.py
-+++ b/api/userApi.py
-@@ -2,7 +2,7 @@ from fastapi import APIRouter,Request,Depends
- 
- from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
- from schemes.utilitySchemes import CustomHTTPException,ResponseModel
--from models import User
-+from models.userModel import User
- from auth import login_required
- 
- router = APIRouter( tags=['User'])
-@@ -41,7 +41,7 @@ async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,u
-         Used for auto complete company for creating users (In order to fulfill this, login is required)
-     """
-     
--    company_id=user_session['company_id']
-+    company_id=user_session["company"]
-     result=await User(request).register_many(company_id,user)
-     return ResponseModel(message=str(result))
- 
 diff --git a/app.py b/app.py
-index ca7f984..7f54468 100644
+index 0eec3ef..32d6f08 100644
 --- a/app.py
 +++ b/app.py
-@@ -1,22 +1,50 @@
-+from motor.motor_asyncio import AsyncIOMotorClient
- from fastapi import FastAPI, Request, Depends
- from fastapi.responses import JSONResponse
- from starlette.middleware.sessions import SessionMiddleware
- from icecream import ic
- from fastapi.middleware.cors import CORSMiddleware
-+from openai import AsyncOpenAI
-+from contextlib import asynccontextmanager
- import os
-+from dotenv import load_dotenv
+@@ -15,7 +15,8 @@ from dotenv import load_dotenv
  
--from models import lifespan
  from schemes.utilitySchemes import CustomHTTPException,ResponseModel
--
- from errors import UserError, SettingsError,CompanyError,BadInputError
- from api import companyApi,knowledgeBaseApi,userApi,settingsApi
+ from errors import UserError, SettingsError,CompanyError,BadInputError,AIError
+-from api import companyApi,knowledgeBaseApi,userApi,settingsApi,actionSuggestionApi
++from api import companyApi,knowledgeBaseApi,userApi,settingsApi,actionSuggestionApi,BusinessStrategyApi
++
+ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+ load_dotenv()
  
-+load_dotenv()
-+
- origins = [    
-     "http://localhost:5500",  # 前端開的網址
-     "http://localhost:5173",
- ]
+@@ -58,6 +59,7 @@ app.include_router(knowledgeBaseApi.router)
+ app.include_router(userApi.router)
+ app.include_router(settingsApi.router)
+ app.include_router(actionSuggestionApi.router)
++app.include_router(BusinessStrategyApi.router)
  
-+
-+@asynccontextmanager
-+async def lifespan(app: FastAPI):
-+    # 啟動時
-+    # configuring local testing env
-+    connection_string = "mongodb+srv://timothychenpc:" + os.environ['DB_PASSWORD'] + "@cluster0.usqn9tz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-+    ic(os.environ['MODE'])
-+    if os.environ['MODE'] == 'local':
-+        connection_string = "mongodb://localhost:27017/"
-+
-+    # MongoDB Agent 
-+    client = AsyncIOMotorClient(connection_string)
-+    app.state.db_client = client
-+    app.state.db = client["main"]
-+    app.state.user = app.state.db.user
-+    # OpenAI Agent
-+    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
-+    
-+    try:
-+        yield
-+    finally:
-+        client.close()
-+
- app = FastAPI(lifespan=lifespan)
-+    
- #模組化
- app.include_router(companyApi.router)
- app.include_router(knowledgeBaseApi.router)
+ # middleware
+ app.add_middleware(
 diff --git a/diff_output.txt b/diff_output.txt
-index 239e0b1..0bdb7f9 100644
+index 343b6ca..e69de29 100644
 --- a/diff_output.txt
 +++ b/diff_output.txt
-@@ -1,747 +0,0 @@
+@@ -1,1724 +0,0 @@
 -diff --git a/api/companyApi.py b/api/companyApi.py
--index f939737..5b3d1b2 100644
+-index 5b3d1b2..98feab6 100644
 ---- a/api/companyApi.py
 -+++ b/api/companyApi.py
--@@ -2,7 +2,7 @@ from fastapi import APIRouter,Request,Depends,Query, Body
+-@@ -2,7 +2,8 @@ from fastapi import APIRouter,Request,Depends,Query, Body
 - 
 - from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 - from schemes.utilitySchemes import CustomHTTPException,ResponseModel
---from models import Company
--+from models import Company,Statistic
+--from models import Company,Statistic
+-+from models.companyModel import Company
+-+from models.statisticsModel import Statistic
 - from auth import login_required
 - 
 - router = APIRouter( tags=['Company'])
--@@ -51,4 +51,16 @@ async def get_departments(request: Request, company_id: str ,user_session=Depend
--     result = await svc.get_company_departmentlist(company_id)
+-@@ -10,7 +11,7 @@ router = APIRouter( tags=['Company'])
+- @router.get("/api/company")
+- async def get_company(request: Request,user_session=Depends(login_required(authority="admin"))):
+-     svc = Company(request)
+--    company_id=user_session['company_id']
+-+    company_id=user_session["company"]
+-     company = await svc.get_company(company_id)
+-     return ResponseModel(message="ok", data=company)
+- 
+-@@ -20,10 +21,10 @@ async def create_company(request: Request, payload: CompanyScheme = None,user_se
+-     if not payload:
+-         username=user_session['username']
+-         company_id = await svc.create_empty_company(username)
+--        return ResponseModel(message="empty company created", data={"company_id": company_id})
+-+        return ResponseModel(message="empty company created", data={"company": company_id})
+-     else:
+-         company_id = await svc.create_company(payload)
+--        return ResponseModel(message="company created", data={"company_id": company_id})
+-+        return ResponseModel(message="company created", data={"company": company_id})
+-     
+- 
+- @router.put("/api/company")
+-@@ -61,6 +62,6 @@ async def get_employee(request: Request, company_id: str ,user_session=Depends(l
+- @router.get('/api/company/employee_count',tags=['Statistics'])
+- async def get_employee_count(request: Request ,user_session=Depends(login_required(authority="admin"))):
+-     svc = Statistic(request)
+--    company_id=user_session['company_id']
+-+    company_id=user_session["company"]
+-     result = await svc.get_company_employee_count(company_id)
 -     return ResponseModel(message="ok", data=result)
-- 
--+@router.get('/api/company/employee')
--+async def get_employee(request: Request, company_id: str ,user_session=Depends(login_required(authority="admin"))):
--+    svc = Company(request)
--+    result = await svc.get_company_departmentlist(company_id)
--+    return ResponseModel(message="ok", data=result)
-- 
--+
--+@router.get('/api/company/employee_count',tags=['Statistics'])
--+async def get_employee_count(request: Request ,user_session=Depends(login_required(authority="admin"))):
--+    svc = Statistic(request)
--+    company_id=user_session['company_id']
--+    result = await svc.get_company_employee_count(company_id)
--+    return ResponseModel(message="ok", data=result)
 -\ No newline at end of file
 -diff --git a/api/knowledgeBaseApi.py b/api/knowledgeBaseApi.py
--index 6b348c0..063568c 100644
+-index e28c98a..5c7c45d 100644
 ---- a/api/knowledgeBaseApi.py
 -+++ b/api/knowledgeBaseApi.py
--@@ -1,10 +1,11 @@
---from fastapi import APIRouter,Request,Depends
--+from fastapi import APIRouter,Request,Depends,Query
--+from typing import Optional
+-@@ -3,9 +3,14 @@ from typing import Optional
 - from icecream import ic
 - 
 - from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-- from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+--from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+-+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter
 - from schemes.utilitySchemes import CustomHTTPException,ResponseModel
---from models import KnowledgeBase,Company,AI,User
--+from models import KnowledgeBase,Company,AI,User,Statistic
+--from models import KnowledgeBase,Company,AI,User,Statistic,Settings
+-+from models.knowledgeModel import KnowledgeBase
+-+from models.companyModel import Company
+-+from models.userModel import User
+-+from models.statisticsModel import Statistic
+-+from models.aiModel import AI
+-+from models.settingsModel import Settings
+- from errors import BadInputError,StatusError,AIError
 - from auth import login_required
 - 
-- router = APIRouter( tags=['KnowledgeBase'])
--@@ -49,6 +50,23 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
+-@@ -45,7 +50,7 @@ async def create_knowledge_base(request: Request ,main_category:MainCategoriesCr
+-         - main_category 資料不符合 schema 驗證會丟出 validation error
+-         - 資料庫操作失敗可能拋出其他例外
+-     '''
+--    company_id=user_session['company_id']
+-+    company_id=user_session["company"]
+-     ic(company_id)
+-     result={}
+-     result['category']=await KnowledgeBase(request).create_maincategory(main_category)
+-@@ -77,42 +82,68 @@ async def dispense_department(request:Request,data:DispenseDepartment):
+-     return ResponseModel(message="ok", data=result)
+- 
+- @router.get("/api/knowledge_base/knowledge")
+--async def get_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="normal"))):
+-+async def get_knowledge(request:Request,data_filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
+-     """
+--    讀取／搜尋知識條目 (Knowledge Items)
+-+    查詢知識庫條目（Knowledge Items），可依多種條件篩選，並根據使用者部門權限限制結果範圍。
+- 
+--    權限：最低為 normal
+-+    權限：需登入且具備 normal 權限等級。
+- 
+-     參數：
+--        request (Request): 請求物件，用以取得例如 company 或 user 資訊
+--        data (KnowledgeSchemeCreate): 查詢條件，例如主分類、副分類、關鍵字等
+--        user_session: 登入後的使用者資訊，至少為 normal 權限
+--
+--    處理流程：
+--        1. 依 username 拿到 user profile（含 company_id, department 等）
+--        2. 把使用者的 department 放入 data.department，以確保查詢依部門權限過濾
+--        3. 呼叫 KnowledgeBase.create_knowledge(data)（這裡名稱 “create_knowledge” 可能是查詢或建立的混用，要確認內部實作）
+--        4. 返回查詢結果
+-+        request (Request): FastAPI 請求物件
+-+        data_filter (KnowledgeFilter): 查詢條件過濾器，支援以下欄位：
+-+            - main_category: 多個主分類名稱
+-+            - sub_category: 多個子分類名稱
+-+            - department: 多個部門（此欄位由系統根據登入者自動設定）
+-+            - created_by: 建立者使用者名稱
+-+            - keyword: 搜索keywords欄位
+-+            - content:模糊搜索【問題】
+-+            - start_time, end_time: 篩選 timestamp 時間範圍
+-+            - limit: 回傳最大筆數（若未指定，則預設查全部）
+-+            - start_index: 起始筆數（用於分頁）
+-+        user_session (dict): 授權中介層注入的登入者資訊（含 username、company_id）
+-+
+-+    查詢邏輯：
+-+        1. 從 session 中取得登入者 username
+-+        2. 讀取該使用者 profile，取得其所屬部門列表
+-+        3. 自動將部門設定進 `data_filter.department`
+-+        4. 將 filter 傳入 KnowledgeBase.get_knowledge()，並執行 MongoDB 查詢
+- 
+-     回傳：
+-         ResponseModel:
+--            message: 操作訊息 ("ok" 或錯誤)
+--            data: 查詢到的知識條目清單或頁面資訊
+-+            message: 操作狀態（"ok" 或錯誤訊息）
+-+            data: 符合條件的知識條目清單（List[dict]）
+- 
+-     錯誤情況：
+--        - 權限不足
+--        - 使用者未設定部門（department 為空）會可能造成查詢時無法分配篩選
+--        - 傳入 data 欄位格式錯誤
+-+        - 權限不足會被 login_required 攔截
+-+        - 使用者不存在或無部門設定時，仍會執行查詢但部門條件為空
+-+        - 查詢資料庫失敗會由底層拋出例外
+-     """
+-     username = user_session['username']
+-     user_profile = await User(request).get_user({"username":username}) # company_id
+-     # department
+--    data.department = user_profile.get('department')
+--    result = await KnowledgeBase(request).create_knowledge(data)
+-+    data_filter.department = user_profile.get('department',[])
+-+    result = await KnowledgeBase(request).get_knowledge(data_filter)
+-     return ResponseModel(message="ok", data=result)
+- 
+--@router.post("/api/knowledge_base/knowledge")
+--async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
+-+@router.post("/api/knowledge_base/load_preset_knowledge")
+-+async def load_preset_knowledge(request:Request,user_session=Depends(login_required(authority="admin"))):
+-+    companyid = user_session['company']
+-+    user_profile=await User(request).get_user({"username":user_session['username']})
+-+    company_profile = await Company(request).get_company(companyid)
+-+    
+-+    category_dict={}
+-+    settings = await Settings(request).get_settings()
+-+    for i in settings['category']:
+-+        if settings['category'][i]['status']:
+-+            category_dict[i]=settings['category'][i]['sub']
+-+            
+-+    ic(category_dict)
+-+    result=await AI(request).generate_knowlege(company_profile,category_dict,user_profile,20)
+-+    return ResponseModel(message="ok", data=result)
+-+
+-+
+-+@router.post("/api/knowledge_base/knowledge/request")
+-+async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
+-     """
+-     建立新的知識條目 (Knowledge Item)
+- 
+-@@ -157,7 +188,7 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
+-         main_category=await KnowledgeBase(request).get_maincategory()
+-         if not main_category:
+-             raise StatusError("please setup main_category first")
+--        ai_result=await AI(request).auto_tagging(main_category,data.example_question,username)
+-+        ai_result=await AI(request).auto_tagging(main_category,data.example_question,user_profile)
+-         
+-         if ai_result in main_category:
+-             success=True
+-@@ -174,7 +205,7 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
+-         try:
+-             sub_category=await KnowledgeBase(request).get_subcategory(data.main_category)
+- 
+--            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,username,extend=True)
+-+            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,user_profile,extend=True)
+-             
+-             if ai_result not in sub_category:
+-                 await KnowledgeBase(request).add_subcategory(data.main_category,ai_result)
+-@@ -194,6 +225,36 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
 -     result = await KnowledgeBase(request).create_knowledge(data)
 -     return ResponseModel(message="ok", data=result)
 - 
--+@router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
--+async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
--+    svc = Statistic(request)
--+    company_id=user_session['company_id']
--+    filter={}
--+    result = await svc.get_knowledge_count(company_id,filter)
--+    return ResponseModel(message="ok", data=result)
+-+@router.get('/api/knowledge_base/ask')
+-+async def ask(request:Request,data:str,user_session=Depends(login_required(authority="normal"))):
+-+    profile=await User(request).get_user({"username":user_session['username']})
+-+    if not profile:
+-+        raise BadInputError("User not exist!")
+-+    
+-+    if profile['department']==[]:
+-+        raise BadInputError("User department unset!")
+-+    departments=profile['department']
+-+    
+-+    settings=await Settings(request).get_settings()
+-+    main_categories=settings['category']
+-+    
+-+    
+-+    filtered_main_categories=[]
+-+    for each_main_category in main_categories:
+-+        ic(each_main_category)
+-+        temp_intersection= list(set(each_main_category['access']) & set(departments))
+-+        ic(temp_intersection)
+-+        
+-+        if temp_intersection : # not empty  ->permitted
+-+            ic(each_main_category)
+-+            filtered_main_categories.append(each_main_category)
+-+    ic(filtered_main_categories)
+-+    
+-+    result = await AI(request).ask_ai()
+-+    return result 
+-+    
 -+
--+@router.post('/api/knowledge_base/knowledge_count/filter',tags=['Statistics'])
--+async def get_knowledge_count_filtered(request:Request,filter:Optional[dict]=None,user_session=Depends(login_required(authority="admin"))):
--+    svc = Statistic(request)
--+    company_id=user_session['company_id']
--+    if not filter:
--+        filter={}
--+    result = await svc.get_knowledge_count(company_id,filter)
--+    return ResponseModel(message="ok", data=result)
 -+
-- @router.post('/api/knowledge_base/chat')
-- async def chat():
--     AI().create_record()
--@@ -75,4 +93,6 @@ async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme
-- @router.delete('/api/knowledge_base/maincategory')
-- async def reset_maincategory_list(request:Request):
--     result = await KnowledgeBase(request).reset_maincategory()
---    return ResponseModel(message="ok", data=result)
+- @router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
+- async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
+-     """
+-@@ -215,7 +276,7 @@ async def get_knowledge_count(request:Request,user_session=Depends(login_require
+-         - 資料庫查詢錯誤
+-     """
+-     svc = Statistic(request)
+--    company_id=user_session['company_id']
+-+    company_id=user_session['company']
+-     filter={}
+-     result = await svc.get_knowledge_count(company_id,filter)
+-     return ResponseModel(message="ok", data=result)
+-@@ -243,9 +304,11 @@ async def get_knowledge_count_filtered(request:Request,filter:Optional[dict]=Non
+-         - 查詢失敗
+-     """
+-     svc = Statistic(request)
+--    company_id=user_session['company_id']
+-+    company_id=user_session["company"]
+-     if not filter:
+-         filter={}
+-+        
+-+    
+-     result = await svc.get_knowledge_count(company_id,filter)
+-     return ResponseModel(message="ok", data=result)
+- 
+-@@ -274,19 +337,20 @@ async def get_maincategory_list(request:Request):
+-     return ResponseModel(message="ok", data=result)
+- 
+- @router.get('/api/knowledge_base/subcategory')
+--async def get_subcategory_list(request:Request):
+-+async def get_subcategory_list(request:Request,main_category:str):
+-     """
+-     取得子構面 (Sub Categories) 的清單
+- 
+-     參數：
+-         request (Request): 請求物件
+-+        main_category:主構面名稱
+- 
+-     回傳：
+-         ResponseModel:
+-             message: 操作訊息
+-             data: 子構面的清單
+-     """
+--    result = await KnowledgeBase(request).get_subcategory()
+-+    result = await KnowledgeBase(request).get_subcategory(main_category)
+-     return ResponseModel(message="ok", data=result)
+- 
+- @router.post('/api/knowledge_base/maincategory')
+-@@ -348,3 +412,16 @@ async def reset_maincategory_list(request:Request):
+-     return ResponseModel(message="ok", data=result)
+- 
+- 
+-+@router.post('/api/knowledge_base/subcategory')
+-+async def add_subcategory(request:Request,data:SubCategoryAdd):
+-+    """
+-+    參數：
+-+        request (Request)
+-+        str (str): 子構面的建立資料
+-+
+-+    回傳：
+-+        ResponseModel:
+-+            message: 操作訊息
+-+    """
+-+    result = await KnowledgeBase(request).add_subcategory(data.main_category,data.sub_category)
+-+    return ResponseModel(message="ok", data=result)
 -\ No newline at end of file
--+    return ResponseModel(message="ok", data=result)
--+
--+
+-diff --git a/api/settingsApi.py b/api/settingsApi.py
+-index 6216edc..d53ba59 100644
+---- a/api/settingsApi.py
+-+++ b/api/settingsApi.py
+-@@ -2,7 +2,8 @@ from fastapi import APIRouter,Request
+- 
+- from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+- from schemes.settingsSchemes import SettingsUpdateScheme
+--from models import Settings
+-+from models.knowledgeModel import KnowledgeBase
+-+from models.settingsModel import Settings
+- from auth import login_required
+- 
+- router = APIRouter( tags=['Settings'])
+-diff --git a/api/userApi.py b/api/userApi.py
+-index 923637c..3026811 100644
+---- a/api/userApi.py
+-+++ b/api/userApi.py
+-@@ -2,7 +2,7 @@ from fastapi import APIRouter,Request,Depends
+- 
+- from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
+- from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+--from models import User
+-+from models.userModel import User
+- from auth import login_required
+- 
+- router = APIRouter( tags=['User'])
+-@@ -41,7 +41,7 @@ async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,u
+-         Used for auto complete company for creating users (In order to fulfill this, login is required)
+-     """
+-     
+--    company_id=user_session['company_id']
+-+    company_id=user_session["company"]
+-     result=await User(request).register_many(company_id,user)
+-     return ResponseModel(message=str(result))
+- 
 -diff --git a/app.py b/app.py
--index 1cd00cf..6da0688 100644
+-index ca7f984..7f54468 100644
 ---- a/app.py
 -+++ b/app.py
--@@ -10,7 +10,6 @@ from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+-@@ -1,22 +1,50 @@
+-+from motor.motor_asyncio import AsyncIOMotorClient
+- from fastapi import FastAPI, Request, Depends
+- from fastapi.responses import JSONResponse
+- from starlette.middleware.sessions import SessionMiddleware
+- from icecream import ic
+- from fastapi.middleware.cors import CORSMiddleware
+-+from openai import AsyncOpenAI
+-+from contextlib import asynccontextmanager
+- import os
+-+from dotenv import load_dotenv
+- 
+--from models import lifespan
+- from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+--
 - from errors import UserError, SettingsError,CompanyError,BadInputError
 - from api import companyApi,knowledgeBaseApi,userApi,settingsApi
 - 
---
+-+load_dotenv()
+-+
+- origins = [    
+-     "http://localhost:5500",  # 前端開的網址
+-     "http://localhost:5173",
+- ]
+- 
+-+
+-+@asynccontextmanager
+-+async def lifespan(app: FastAPI):
+-+    # 啟動時
+-+    # configuring local testing env
+-+    connection_string = "mongodb+srv://timothychenpc:" + os.environ['DB_PASSWORD'] + "@cluster0.usqn9tz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+-+    ic(os.environ['MODE'])
+-+    if os.environ['MODE'] == 'local':
+-+        connection_string = "mongodb://localhost:27017/"
+-+
+-+    # MongoDB Agent 
+-+    client = AsyncIOMotorClient(connection_string)
+-+    app.state.db_client = client
+-+    app.state.db = client["main"]
+-+    app.state.user = app.state.db.user
+-+    # OpenAI Agent
+-+    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+-+    
+-+    try:
+-+        yield
+-+    finally:
+-+        client.close()
+-+
 - app = FastAPI(lifespan=lifespan)
+-+    
 - #模組化
 - app.include_router(companyApi.router)
--@@ -49,8 +48,6 @@ async def custom_http_exception_handler(request: Request, exc: CustomHTTPExcepti
--         ).model_dump()
--     )
-- 
---
---
-- @app.get("/",response_model=ResponseModel)
-- async def root():
--     db = app.state.db
+- app.include_router(knowledgeBaseApi.router)
 -diff --git a/diff_output.txt b/diff_output.txt
--index 14c2318..e551a73 100644
+-index 239e0b1..0bdb7f9 100644
 ---- a/diff_output.txt
 -+++ b/diff_output.txt
--@@ -1,616 +0,0 @@
+-@@ -1,747 +0,0 @@
 --diff --git a/api/companyApi.py b/api/companyApi.py
---index 10d095f..f939737 100644
+--index f939737..5b3d1b2 100644
 ----- a/api/companyApi.py
 --+++ b/api/companyApi.py
---@@ -1,6 +1,7 @@
--- from fastapi import APIRouter,Request,Depends,Query, Body
+--@@ -2,7 +2,7 @@ from fastapi import APIRouter,Request,Depends,Query, Body
 -- 
----from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,CompanyScheme,CompanyStructureSetupScheme
---+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
--- from models import Company
+-- from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+-- from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+---from models import Company
+--+from models import Company,Statistic
 -- from auth import login_required
 -- 
+-- router = APIRouter( tags=['Company'])
+--@@ -51,4 +51,16 @@ async def get_departments(request: Request, company_id: str ,user_session=Depend
+--     result = await svc.get_company_departmentlist(company_id)
+--     return ResponseModel(message="ok", data=result)
+-- 
+--+@router.get('/api/company/employee')
+--+async def get_employee(request: Request, company_id: str ,user_session=Depends(login_required(authority="admin"))):
+--+    svc = Company(request)
+--+    result = await svc.get_company_departmentlist(company_id)
+--+    return ResponseModel(message="ok", data=result)
+-- 
+--+
+--+@router.get('/api/company/employee_count',tags=['Statistics'])
+--+async def get_employee_count(request: Request ,user_session=Depends(login_required(authority="admin"))):
+--+    svc = Statistic(request)
+--+    company_id=user_session['company_id']
+--+    result = await svc.get_company_employee_count(company_id)
+--+    return ResponseModel(message="ok", data=result)
+--\ No newline at end of file
 --diff --git a/api/knowledgeBaseApi.py b/api/knowledgeBaseApi.py
---index 3283362..6b348c0 100644
+--index 6b348c0..063568c 100644
 ----- a/api/knowledgeBaseApi.py
 --+++ b/api/knowledgeBaseApi.py
---@@ -1,8 +1,10 @@
--- from fastapi import APIRouter,Request,Depends
+--@@ -1,10 +1,11 @@
+---from fastapi import APIRouter,Request,Depends
+--+from fastapi import APIRouter,Request,Depends,Query
+--+from typing import Optional
 -- from icecream import ic
 -- 
----from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,MainCategoriesCreate,DispenseDepartment,KnowledgeSchemeCreate
----from models import KnowledgeBase,Company,Chat,User
---+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
---+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
---+from models import KnowledgeBase,Company,AI,User
+-- from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+-- from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+-- from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+---from models import KnowledgeBase,Company,AI,User
+--+from models import KnowledgeBase,Company,AI,User,Statistic
 -- from auth import login_required
 -- 
 -- router = APIRouter( tags=['KnowledgeBase'])
---@@ -49,4 +51,28 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
+--@@ -49,6 +50,23 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
+--     result = await KnowledgeBase(request).create_knowledge(data)
+--     return ResponseModel(message="ok", data=result)
 -- 
+--+@router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
+--+async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
+--+    svc = Statistic(request)
+--+    company_id=user_session['company_id']
+--+    filter={}
+--+    result = await svc.get_knowledge_count(company_id,filter)
+--+    return ResponseModel(message="ok", data=result)
+--+
+--+@router.post('/api/knowledge_base/knowledge_count/filter',tags=['Statistics'])
+--+async def get_knowledge_count_filtered(request:Request,filter:Optional[dict]=None,user_session=Depends(login_required(authority="admin"))):
+--+    svc = Statistic(request)
+--+    company_id=user_session['company_id']
+--+    if not filter:
+--+        filter={}
+--+    result = await svc.get_knowledge_count(company_id,filter)
+--+    return ResponseModel(message="ok", data=result)
+--+
 -- @router.post('/api/knowledge_base/chat')
 -- async def chat():
----    Chat().create_chat_record()
---+    AI().create_record()
---+
---+
---+
---+# maincategory
---+
---+@router.get('/api/knowledge_base/maincategory')
---+async def get_maincategory_list(request:Request):
---+    result = await KnowledgeBase(request).get_maincategory()
---+    return ResponseModel(message="ok", data=result)
---+
---+@router.post('/api/knowledge_base/maincategory')
---+async def create_maincategory_list(request:Request,data:MainCategoriesCreate):
---+    result = await KnowledgeBase(request).create_maincategory(data)
---+    return ResponseModel(message="ok", data=result)
---+
---+@router.put('/api/knowledge_base/maincategory')
---+async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme):
---+    result = await KnowledgeBase(request).edit_maincategory(data)
---+    return ResponseModel(message="ok", data=result)
---+
---+@router.delete('/api/knowledge_base/maincategory')
---+async def reset_maincategory_list(request:Request):
---+    result = await KnowledgeBase(request).reset_maincategory()
---+    return ResponseModel(message="ok", data=result)
+--     AI().create_record()
+--@@ -75,4 +93,6 @@ async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme
+-- @router.delete('/api/knowledge_base/maincategory')
+-- async def reset_maincategory_list(request:Request):
+--     result = await KnowledgeBase(request).reset_maincategory()
+---    return ResponseModel(message="ok", data=result)
 --\ No newline at end of file
---diff --git a/api/settingsApi.py b/api/settingsApi.py
---index efab601..6216edc 100644
------ a/api/settingsApi.py
---+++ b/api/settingsApi.py
---@@ -1,13 +1,19 @@
--- from fastapi import APIRouter,Request
--- 
----from schemes import ResponseModel
---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
---+from schemes.settingsSchemes import SettingsUpdateScheme
--- from models import Settings
--- from auth import login_required
--- 
--- router = APIRouter( tags=['Settings'])
--- 
----@router.post("/settings")
----async def settings_endpoint(request:Request):
---+@router.get("/settings")
---+async def get_setttings(request:Request):
---     result = await Settings(request).get_settings()
---     return ResponseModel(message=str(result))
--- 
---+@router.put("/settings")
---+async def update_settings(request:Request,data:SettingsUpdateScheme):
---+    result = await Settings(request).update_settings(data)
---+    return ResponseModel(message=str(result))
+--+    return ResponseModel(message="ok", data=result)
 --+
---diff --git a/api/userApi.py b/api/userApi.py
---index 29e2f59..a46adb6 100644
------ a/api/userApi.py
---+++ b/api/userApi.py
---@@ -1,6 +1,7 @@
--- from fastapi import APIRouter,Request,Depends
--- 
----from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException
---+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
--- from models import User
--- from auth import login_required
--- 
+--+
 --diff --git a/app.py b/app.py
---index d1dfeae..1cd00cf 100644
+--index 1cd00cf..6da0688 100644
 ----- a/app.py
 --+++ b/app.py
---@@ -3,21 +3,20 @@ from fastapi.responses import JSONResponse
--- from starlette.middleware.sessions import SessionMiddleware
--- from icecream import ic
--- import os
----import asyncio
--- 
----from auth import login_required
----from models import lifespan, User, Settings,KnowledgeBase,Chat
----from schemes import ResponseModel, CustomHTTPException, UserLoginScheme, KnowledgeSchemeCreate, CompanyScheme, UserRegisterScheme,CompanyStructureSetupScheme,MainCategoriesCreate,DispenseDepartment
---+from models import lifespan
---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
---+
+--@@ -10,7 +10,6 @@ from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 -- from errors import UserError, SettingsError,CompanyError,BadInputError
----from api import companyApi,knowledgeBaseApi,userApi
---+from api import companyApi,knowledgeBaseApi,userApi,settingsApi
+-- from api import companyApi,knowledgeBaseApi,userApi,settingsApi
 -- 
--- 
--- app = FastAPI(lifespan=lifespan)
 ---
+-- app = FastAPI(lifespan=lifespan)
 -- #模組化
 -- app.include_router(companyApi.router)
--- app.include_router(knowledgeBaseApi.router)
--- app.include_router(userApi.router)
---+app.include_router(settingsApi.router)
--- 
--- app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
--- 
---@@ -68,8 +67,4 @@ async def healthz(request: Request):
---         "last_error": cache.last_error,
---     }
+--@@ -49,8 +48,6 @@ async def custom_http_exception_handler(request: Request, exc: CustomHTTPExcepti
+--         ).model_dump()
+--     )
 -- 
 ---
 ---
----# company
----
--- # 留stage api讓前端追蹤註冊的進度到哪裡了
---\ No newline at end of file
---diff --git a/auth.py b/auth.py
---index b779952..c982273 100644
------ a/auth.py
---+++ b/auth.py
---@@ -1,6 +1,6 @@
--- from fastapi import Request
--- 
----from schemes import CustomHTTPException
---+from schemes.utilitySchemes import CustomHTTPException
--- 
--- def login_required(authority: str):
---     async def checker(request: Request):
+-- @app.get("/",response_model=ResponseModel)
+-- async def root():
+--     db = app.state.db
+--diff --git a/diff_output.txt b/diff_output.txt
+--index 14c2318..e551a73 100644
+----- a/diff_output.txt
+--+++ b/diff_output.txt
+--@@ -1,616 +0,0 @@
+---diff --git a/api/companyApi.py b/api/companyApi.py
+---index 10d095f..f939737 100644
+------ a/api/companyApi.py
+---+++ b/api/companyApi.py
+---@@ -1,6 +1,7 @@
+--- from fastapi import APIRouter,Request,Depends,Query, Body
+--- 
+----from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,CompanyScheme,CompanyStructureSetupScheme
+---+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+--- from models import Company
+--- from auth import login_required
+--- 
+---diff --git a/api/knowledgeBaseApi.py b/api/knowledgeBaseApi.py
+---index 3283362..6b348c0 100644
+------ a/api/knowledgeBaseApi.py
+---+++ b/api/knowledgeBaseApi.py
+---@@ -1,8 +1,10 @@
+--- from fastapi import APIRouter,Request,Depends
+--- from icecream import ic
+--- 
+----from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException,MainCategoriesCreate,DispenseDepartment,KnowledgeSchemeCreate
+----from models import KnowledgeBase,Company,Chat,User
+---+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+---+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+---+from models import KnowledgeBase,Company,AI,User
+--- from auth import login_required
+--- 
+--- router = APIRouter( tags=['KnowledgeBase'])
+---@@ -49,4 +51,28 @@ async def create_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sessi
+--- 
+--- @router.post('/api/knowledge_base/chat')
+--- async def chat():
+----    Chat().create_chat_record()
+---+    AI().create_record()
+---+
+---+
+---+
+---+# maincategory
+---+
+---+@router.get('/api/knowledge_base/maincategory')
+---+async def get_maincategory_list(request:Request):
+---+    result = await KnowledgeBase(request).get_maincategory()
+---+    return ResponseModel(message="ok", data=result)
+---+
+---+@router.post('/api/knowledge_base/maincategory')
+---+async def create_maincategory_list(request:Request,data:MainCategoriesCreate):
+---+    result = await KnowledgeBase(request).create_maincategory(data)
+---+    return ResponseModel(message="ok", data=result)
+---+
+---+@router.put('/api/knowledge_base/maincategory')
+---+async def edit_maincategory_list(request:Request,data:MainCategoriesUpdateScheme):
+---+    result = await KnowledgeBase(request).edit_maincategory(data)
+---+    return ResponseModel(message="ok", data=result)
+---+
+---+@router.delete('/api/knowledge_base/maincategory')
+---+async def reset_maincategory_list(request:Request):
+---+    result = await KnowledgeBase(request).reset_maincategory()
+---+    return ResponseModel(message="ok", data=result)
+---\ No newline at end of file
+---diff --git a/api/settingsApi.py b/api/settingsApi.py
+---index efab601..6216edc 100644
+------ a/api/settingsApi.py
+---+++ b/api/settingsApi.py
+---@@ -1,13 +1,19 @@
+--- from fastapi import APIRouter,Request
+--- 
+----from schemes import ResponseModel
+---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+---+from schemes.settingsSchemes import SettingsUpdateScheme
+--- from models import Settings
+--- from auth import login_required
+--- 
+--- router = APIRouter( tags=['Settings'])
+--- 
+----@router.post("/settings")
+----async def settings_endpoint(request:Request):
+---+@router.get("/settings")
+---+async def get_setttings(request:Request):
+---     result = await Settings(request).get_settings()
+---     return ResponseModel(message=str(result))
+--- 
+---+@router.put("/settings")
+---+async def update_settings(request:Request,data:SettingsUpdateScheme):
+---+    result = await Settings(request).update_settings(data)
+---+    return ResponseModel(message=str(result))
+---+
+---diff --git a/api/userApi.py b/api/userApi.py
+---index 29e2f59..a46adb6 100644
+------ a/api/userApi.py
+---+++ b/api/userApi.py
+---@@ -1,6 +1,7 @@
+--- from fastapi import APIRouter,Request,Depends
+--- 
+----from schemes import UserLoginScheme,ResponseModel,UserRegisterScheme,CustomHTTPException
+---+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
+---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+--- from models import User
+--- from auth import login_required
+--- 
+---diff --git a/app.py b/app.py
+---index d1dfeae..1cd00cf 100644
+------ a/app.py
+---+++ b/app.py
+---@@ -3,21 +3,20 @@ from fastapi.responses import JSONResponse
+--- from starlette.middleware.sessions import SessionMiddleware
+--- from icecream import ic
+--- import os
+----import asyncio
+--- 
+----from auth import login_required
+----from models import lifespan, User, Settings,KnowledgeBase,Chat
+----from schemes import ResponseModel, CustomHTTPException, UserLoginScheme, KnowledgeSchemeCreate, CompanyScheme, UserRegisterScheme,CompanyStructureSetupScheme,MainCategoriesCreate,DispenseDepartment
+---+from models import lifespan
+---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+---+
+--- from errors import UserError, SettingsError,CompanyError,BadInputError
+----from api import companyApi,knowledgeBaseApi,userApi
+---+from api import companyApi,knowledgeBaseApi,userApi,settingsApi
+--- 
+--- 
+--- app = FastAPI(lifespan=lifespan)
+----
+--- #模組化
+--- app.include_router(companyApi.router)
+--- app.include_router(knowledgeBaseApi.router)
+--- app.include_router(userApi.router)
+---+app.include_router(settingsApi.router)
+--- 
+--- app.add_middleware(SessionMiddleware, secret_key=os.urandom(16).hex())
+--- 
+---@@ -68,8 +67,4 @@ async def healthz(request: Request):
+---         "last_error": cache.last_error,
+---     }
+--- 
+----
+----
+----# company
+----
+--- # 留stage api讓前端追蹤註冊的進度到哪裡了
+---\ No newline at end of file
+---diff --git a/auth.py b/auth.py
+---index b779952..c982273 100644
+------ a/auth.py
+---+++ b/auth.py
+---@@ -1,6 +1,6 @@
+--- from fastapi import Request
+--- 
+----from schemes import CustomHTTPException
+---+from schemes.utilitySchemes import CustomHTTPException
+--- 
+--- def login_required(authority: str):
+---     async def checker(request: Request):
+---diff --git a/models.py b/models.py
+---index 85cb385..b301c71 100644
+------ a/models.py
+---+++ b/models.py
+---@@ -3,16 +3,20 @@ from fastapi import FastAPI, HTTPException, Request
+--- from passlib.context import CryptContext
+--- from icecream import ic
+--- from bson import ObjectId
+---+from openai import AsyncOpenAI
+--- 
+--- import os
+----import asyncio
+----import anyio    #async corotine的lock
+--- from contextlib import asynccontextmanager
+--- from dotenv import load_dotenv
+--- 
+----from schemes import *
+---+from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
+---+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+---+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+---+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
+---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+---+from schemes.settingsSchemes import SettingsUpdateScheme
+--- from errors import UserError,SettingsError,CompanyError,BadInputError
+----from tools import token_generator
+---+from tools import token_generator,_ensure_model
+--- 
+--- load_dotenv()
+--- 
+---@@ -34,10 +38,13 @@ async def lifespan(app: FastAPI):
+---     if os.environ['MODE'] == 'local':
+---         connection_string = "mongodb://localhost:27017/"
+--- 
+---+    # MongoDB Agent 
+---     client = AsyncIOMotorClient(connection_string)
+---     app.state.db_client = client
+---     app.state.db = client["main"]
+---     app.state.user = app.state.db.user
+---+    # OpenAI Agent
+---+    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+---     
+---     try:
+---         yield
+---@@ -184,8 +191,14 @@ class Settings():
+---             return result[0]
+---             
+---     
+----    async def update_settings(self,data:dict):
+----        await self.collection.update_one({"type":"settings","company":self.company},{"$set":data})
+---+    async def update_settings(self,data:dict | SettingsUpdateScheme):
+---+        _data_model=_ensure_model(data,SettingsUpdateScheme)
+---+        _data=_data_model.model_dump(exclude_none=True,exclude_unset=True,by_alias=True)
+---+        
+---+        if not _data:
+---+            raise BadInputError("No valid fields provided to update")
+---+    
+---+        await self.collection.update_one({"type":"settings","company":self.company},{"$set":_data})
+---         return 'ok'
+--- 
+---     
+---@@ -222,20 +235,15 @@ class KnowledgeBase():
+---         result = await current_settings.update_settings({"category":data.model_dump(exclude="company_description",by_alias=True)})
+---         return result
+---     
+----    async def edit_maincategory(self,data:MainCategoriesCreate):
+---+    async def edit_maincategory(self,data:MainCategoriesUpdateScheme):
+---         current_settings=Settings(self.request)
+----        doc=await current_settings.get_settings()
+----        
+---         result = await current_settings.update_settings({"category":data.model_dump(exclude_none=True,exclude_unset=True)})
+---         return result
+----        
+---     
+----    async def edit_maincategory(self):
+----        # verify_password
+----        pass
+----    
+----    async def delete_maincategory(self):
+----        pass
+---+    async def reset_maincategory(self):
+---+        template_data=MainCategoriesTemplate().model_dump(by_alias=True,exclude="company_description")
+---+        return await Settings(self.request).update_settings({"category":template_data})
+---+        
+---     
+---     async def dispense_department(self,data:DispenseDepartment):
+---         data_dict=data.model_dump(exclude_none=True,by_alias=True)
+---@@ -398,16 +406,45 @@ class Company():
+---         return "ok"
+--- 
+--- 
+----class Chat():
+---+class AI():
+---     def __init__(self,request:Request):
+---         db = request.app.state.db
+---         self.collection = db.chat_history
+---         self.request=request
+---+        
+---+        self.agent=request.app.state.agent
+--- 
+----    async def create_chat_record(self, data:ChatRecordCreate):
+---+    async def create_record(self, record_type:str,data:RecordCreate ):
+---+        data.type=record_type
+---+        data=_ensure_model(data,RecordCreate)
+---         data_dict = data.model_dump()
+---         return await self.collection.insert_one(data_dict)
+---     
+----    async def create_chat_record(self, data:ChatRecordEdit):
+---+    async def edit_record(self, data:RecordEdit):
+---+        data=_ensure_model(data,RecordEdit)
+---         data_dict = data.model_dump(exclude_unset=True,exclude_none=True)
+----        return await self.collection.update_one({"$set":data_dict})
+---\ No newline at end of file
+---+        return await self.collection.update_one({"$set":data_dict})
+---+    
+---+    async def ask_question(self,question,by):
+---+        instructions="""
+---+        
+---+        
+---+        
+---+        
+---+        """
+---+        
+---+        resp = await self.agent.responses.create(
+---+            model="gpt-5-nano-2025-08-07",
+---+            instruction=instructions,
+---+            # gpt-5-nano-2025-08-07
+---+            prompt=question,
+---+        )
+---+        self.create_record("chat",RecordCreate(
+---+            ask=question,
+---+            answer=resp.output.text,
+---+            user=by
+---+        ))
+---+        print(resp.output.text)
+---+
+---+
+---+
+---diff --git a/readme.md b/readme.md
+---index 20659d4..e60b6bc 100644
+------ a/readme.md
+---+++ b/readme.md
+---@@ -141,7 +141,8 @@ curl -X GET http://localhost:8000/checkauth \
+--- ## 測試資料
+--- - /api/company/setup_company_structure
+---   - 
+----    ```json
+---+    
+---+```json
+---   {
+---   "departments": [
+---     {
+---@@ -216,9 +217,9 @@ curl -X GET http://localhost:8000/checkauth \
+---     }
+---   ]
+--- }
+----        ```
+----
+---+```
+--- 
+---+```json
+--- {
+---   "company_description": "本企業概況為全面掌握日用品與美妝零售通路，經營實體門市超過200家，商品類別多元，SKU 數量眾多，涵蓋生活百貨、個人清潔、美妝保養、保健食品。內部人力規模涵蓋門市、倉儲、客服、採購等，且立有標準SOP流程。希望能透過知識庫強化內部作業與回饋機制。",
+---   "品質管理": {
+---@@ -295,20 +296,22 @@ curl -X GET http://localhost:8000/checkauth \
+---     "status": false
+---   }
+--- }
+---+```
+--- 
+--- 
+----
+----{
+----  "品質管理": ["總部","商品部"],
+----  "倉儲管理": ["總部","營運部"],
+----  "生產管理": ["總部"],
+----  "客戶服務": ["總部","客戶服務中心"],
+----  "採購管理": ["總部","採購部"],
+----  "設備維護": ["總部"],
+----  "能源管理": ["總部","行銷策劃部"],
+----  "物流與配送": ["總部"],
+----  "研發與創新": ["總部"],
+----  "財務管理": ["總部"],
+----  "人力資源": ["總部","人力資源部"],
+----  "數據安全與治理": ["總部"]
+----}
+---\ No newline at end of file
+---+```json
+---+  {
+---+    "品質管理": ["總部","商品部"],
+---+    "倉儲管理": ["總部","營運部"],
+---+    "生產管理": ["總部"],
+---+    "客戶服務": ["總部","客戶服務中心"],
+---+    "採購管理": ["總部","採購部"],
+---+    "設備維護": ["總部"],
+---+    "能源管理": ["總部","行銷策劃部"],
+---+    "物流與配送": ["總部"],
+---+    "研發與創新": ["總部"],
+---+    "財務管理": ["總部"],
+---+    "人力資源": ["總部","人力資源部"],
+---+    "數據安全與治理": ["總部"]
+---+  }
+---+```
+---\ No newline at end of file
+---diff --git a/schemes.py b/schemes.py
+---deleted file mode 100644
+---index 27538dd..0000000
+------ a/schemes.py
+---+++ /dev/null
+---@@ -1,179 +0,0 @@
+----from fastapi import HTTPException
+----
+----from datetime import datetime, timezone
+----from zoneinfo import ZoneInfo
+----
+----from typing import Any, Optional, Literal
+----from pydantic import BaseModel,EmailStr, field_serializer,Field,ConfigDict
+----
+----from tools import bson_to_jsonable
+----
+----class UserRegisterScheme(BaseModel):
+----    username:EmailStr # account=email
+----    password:str
+----    name:Optional[str]=""
+----    authority:Literal['normal','owner','admin']='normal'
+----    company:Optional[str]=""
+----    phone:Optional[str]=""
+----    role:Optional[str]="" # 角色 
+----    token:Optional[str]=None # permittion to create a admin account
+----    note:Optional[str]=""
+----    department:str=""
+----    
+----class UserLoginScheme(BaseModel):
+----    username:EmailStr # account=email
+----    password:str
+----
+----class KnowledgeSchemeCreate(BaseModel):
+----    _id:str
+----    department:list[str]
+----    keywords:list[str]=[]
+----    tag:list[str] =[]
+----    
+----    example_question:str
+----    example_answer:str = ""
+----    
+----    main_category:str 
+----    sub_category:str 
+----
+----    files:list[str] = []
+----    status:Literal['solved','unsolved']="unsolved" #是否被解決 
+----    created_by:str="" #?
+----    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+----
+----    @field_serializer("timestamp")
+----    def _serialize_timestamp(self, v: datetime):
+----        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+----        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
+----    
+----class ContactPerson(BaseModel):
+----    name: str
+----    email: EmailStr
+----    phone: Optional[str] = ""
+----    
+----class MainCategoryConfig(BaseModel):
+----    description: list[str] = []
+----    sub: list[str] = []
+----    access: list[str] = []
+----    status: bool
+----
+----class MainCategoriesCreate(BaseModel):
+----    # 僅這些 key 合法；沒出現在這裡的 key 會被直接擋掉
+----    # 內部以英文欄位名維護；對外用中文 key（alias）收/回資料。
+----    # 只允許下列欄位（extra='forbid'），未列出的 key 會被擋掉。
+----    company_description:str = ""
+----    
+----    quality_management: Optional[MainCategoryConfig] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
+----    warehouse_management: Optional[MainCategoryConfig] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理"    )
+----    production_management: Optional[MainCategoryConfig] = Field(None, validation_alias="生產管理", serialization_alias="生產管理"    )
+----    customer_service: Optional[MainCategoryConfig] = Field(None, validation_alias="客戶服務", serialization_alias="客戶服務"    )
+----    procurement_management: Optional[MainCategoryConfig] = Field(None, validation_alias="採購管理", serialization_alias="採購管理"    )
+----    equipment_maintenance: Optional[MainCategoryConfig] = Field(None, validation_alias="設備維護", serialization_alias="設備維護"    )
+----    energy_management: Optional[MainCategoryConfig] = Field(None, validation_alias="能源管理", serialization_alias="能源管理"    )
+----    logistics_and_distribution: Optional[MainCategoryConfig] = Field(None, validation_alias="物流與配送", serialization_alias="物流與配送"    )
+----    r_n_d_innovation: Optional[MainCategoryConfig] = Field(None, validation_alias="研發與創新", serialization_alias="研發與創新"    )
+----    financial_management: Optional[MainCategoryConfig] = Field(None, validation_alias="財務管理", serialization_alias="財務管理"    )
+----    human_resources: Optional[MainCategoryConfig] = Field(None, validation_alias="人力資源", serialization_alias="人力資源"    )
+----    data_security_and_governance: Optional[MainCategoryConfig] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理"    )
+----    # extra='forbid'
+----    # 控制「額外 key」的處理方式。
+----    # Pydantic 預設是 extra='ignore'（沒定義的 key 會被丟掉），
+----    # 你這裡改成 forbid → 沒定義的 key 會直接報錯
+----
+----
+----class CompanyScheme(BaseModel):
+----    company_name: str
+----    company_type: list[str]
+----    company_unicode: str  # 統編
+----    company_property: list[str]
+----    contact_person: ContactPerson
+----    company_description: Optional[str] = ""   # 產業型態
+----    company_scale:str="",#50~100
+----    department_count:int
+----    language:str="zh"
+----
+----class CompanyStructureListItem(BaseModel):
+----    department_name: str
+----    parent_department: str
+----    role: str  # 職責描述
+----    person_in_charge: ContactPerson
+----
+----class CompanyStructureListItemDB(BaseModel):
+----    department_name: str
+----    parent_department: str
+----    role: str  # 職責描述
+----    person_in_charge_id: str
+----
+----
+----
+----# Response Scheme
+----
+----#定義標準的回應格式
+----class ResponseModel(BaseModel):
+----    success: bool = True
+----    status_code: int = 200 
+----    message: str # 提示訊息
+----    data: Optional[Any] = None #如果需要夾帶資料的話可以放這裡
+----
+----    @field_serializer('data') # 針對data這個欄位進行客製化的serialize，解決bson會出現的問題
+----    def serialize_data(self, v):
+----        return bson_to_jsonable(v)  # 低迴進行控制
+----    
+----class CompanyStructureSetupScheme(BaseModel):
+----    departments:list[CompanyStructureListItem]
+----    
+----class DispenseDepartment(BaseModel):
+----    quality_management: Optional[list[str]] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
+----    warehouse_management: Optional[list[str]] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理")
+----    production_management: Optional[list[str]] = Field(None, validation_alias="生產管理", serialization_alias="生產管理")
+----    customer_service: Optional[list[str]] = Field(None, validation_alias="客戶服務", serialization_alias="客戶服務")
+----    procurement_management: Optional[list[str]] = Field(None, validation_alias="採購管理", serialization_alias="採購管理")
+----    equipment_maintenance: Optional[list[str]] = Field(None, validation_alias="設備維護", serialization_alias="設備維護")
+----    energy_management: Optional[list[str]] = Field(None, validation_alias="能源管理", serialization_alias="能源管理")
+----    logistics_and_distribution: Optional[list[str]] = Field(None, validation_alias="物流與配送", serialization_alias="物流與配送")
+----    r_n_d_innovation: Optional[list[str]] = Field(None, validation_alias="研發與創新", serialization_alias="研發與創新")
+----    financial_management: Optional[list[str]] = Field(None, validation_alias="財務管理", serialization_alias="財務管理")
+----    human_resources: Optional[list[str]] = Field(None, validation_alias="人力資源", serialization_alias="人力資源")
+----    data_security_and_governance: Optional[list[str]] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理")
+----
+----
+----# 在原本HTTPException的基礎上加入data和code欄位
+----class CustomHTTPException(HTTPException):
+----    def __init__(self, message: str, status_code: int = 400, data: Any = None):
+----        # super()本身只會拿到父物件，如果需要call 父親物件的constructor需要手動另外呼叫
+----        super().__init__(status_code=status_code, detail=message)
+----        self.data = data
+----        
+----        
+----class  QuestionReponse(BaseModel):
+----    response:str
+----
+----class ChatRecordCreate(BaseModel):
+----    ask: str
+----    answer: str
+----    user: str
+----    status:Literal['normal','suggest-solved','suggest-unsolved']
+----    reponse:QuestionReponse=""
+----    # Store as timezone-aware UTC datetime; auto-fill on creation
+----    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+----
+----    @field_serializer("timestamp")
+----    def _serialize_timestamp(self, v: datetime):
+----        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+----        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
+----    
+----    
+----class ChatRecordEdit(BaseModel):
+----    ask: str =""
+----    answer: str =""
+----    user: str=""
+----    status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
+----    reponse:QuestionReponse=""
+----    # Store as timezone-aware UTC datetime; auto-fill on creation
+----    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+----
+----    @field_serializer("timestamp")
+----    def _serialize_timestamp(self, v: datetime):
+----        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
+----        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
+----    
+---\ No newline at end of file
+---diff --git a/test.py b/test.py
+---index 0bac59c..735ab61 100644
+------ a/test.py
+---+++ b/test.py
+---@@ -1,13 +1,31 @@
+----from openai import OpenAI
+--- import os
+--- 
+----client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+--- 
+----response = client.completions.create(
+----    model="gpt-3.5-turbo-instruct",  # 取代原本的 text-davinci-003
+----    prompt="講個笑話來聽聽",
+----    max_tokens=128,
+----    temperature=0.5,
+----)
+---+import asyncio
+---+from openai import AsyncOpenAI
+--- 
+----print(response.choices[0].text)
+---\ No newline at end of file
+---+client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])  # async client
+---+
+---+async def main():
+---+    # Instruct-style completion (short by default unless you set max_tokens)
+---+    resp = await client.completions.create(
+---+        model="gpt-3.5-turbo-instruct",
+---+        prompt="講個笑話",
+---+        max_tokens=200,           # ✅ increase allowed output length (default is small)
+---+        temperature=0.8,
+---+        stop=None,
+---+    )
+---+    # Print the first choice's text content
+---+    print(resp.choices[0].text.strip())
+---+
+---+    # --- Optional: chat-completions variant ---
+---+    # If you prefer the chat endpoint (often better maintained), uncomment below:
+---+    # chat = await client.chat.completions.create(
+---+    #     model="gpt-4o-mini",
+---+    #     messages=[{"role": "user", "content": "講個笑話"}],
+---+    #     max_tokens=200,
+---+    # )
+---+    # print(chat.choices[0].message.content)
+---+
+---+asyncio.run(main())
+---+ 
+---\ No newline at end of file
+---diff --git a/tools.py b/tools.py
+---index 31cbf58..1ceb782 100644
+------ a/tools.py
+---+++ b/tools.py
+---@@ -1,5 +1,6 @@
+--- from bson import ObjectId
+----
+---+from pydantic import BaseModel
+---+from typing import TypeVar
+--- import secrets
+--- 
+--- def token_generator(length:int=24):
+---@@ -12,4 +13,11 @@ def bson_to_jsonable(obj):
+---         return {k: bson_to_jsonable(v) for k, v in obj.items()}
+---     if isinstance(obj, list):
+---         return [bson_to_jsonable(v) for v in obj]
+----    return obj
+---\ No newline at end of file
+---+    return obj
+---+
+---+M = TypeVar("M", bound=BaseModel)# 讓編譯器可以看得懂
+---+def _ensure_model(data, model_type: type[M]) -> M:
+---+    if isinstance(data, model_type):
+---+        return data
+---+    return model_type.model_validate(data)
+---+
 --diff --git a/models.py b/models.py
---index 85cb385..b301c71 100644
+--index b301c71..f34b280 100644
 ----- a/models.py
 --+++ b/models.py
---@@ -3,16 +3,20 @@ from fastapi import FastAPI, HTTPException, Request
--- from passlib.context import CryptContext
--- from icecream import ic
--- from bson import ObjectId
---+from openai import AsyncOpenAI
+--@@ -447,4 +447,16 @@ class AI():
+--         print(resp.output.text)
 -- 
--- import os
----import asyncio
----import anyio    #async corotine的lock
--- from contextlib import asynccontextmanager
--- from dotenv import load_dotenv
 -- 
----from schemes import *
---+from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
---+from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
---+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
---+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme
---+from schemes.utilitySchemes import CustomHTTPException,ResponseModel
---+from schemes.settingsSchemes import SettingsUpdateScheme
--- from errors import UserError,SettingsError,CompanyError,BadInputError
----from tools import token_generator
---+from tools import token_generator,_ensure_model
--- 
--- load_dotenv()
--- 
---@@ -34,10 +38,13 @@ async def lifespan(app: FastAPI):
---     if os.environ['MODE'] == 'local':
---         connection_string = "mongodb://localhost:27017/"
--- 
---+    # MongoDB Agent 
---     client = AsyncIOMotorClient(connection_string)
---     app.state.db_client = client
---     app.state.db = client["main"]
---     app.state.user = app.state.db.user
---+    # OpenAI Agent
---+    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
---     
---     try:
---         yield
---@@ -184,8 +191,14 @@ class Settings():
---             return result[0]
---             
---     
----    async def update_settings(self,data:dict):
----        await self.collection.update_one({"type":"settings","company":self.company},{"$set":data})
---+    async def update_settings(self,data:dict | SettingsUpdateScheme):
---+        _data_model=_ensure_model(data,SettingsUpdateScheme)
---+        _data=_data_model.model_dump(exclude_none=True,exclude_unset=True,by_alias=True)
+---
+--+class Statistic():
+--+    def __init__(self,request:Request):
+--+        self.db = request.app.state.db
+--+        self.collection = self.db.companies
+--+        self.request=request
 --+        
---+        if not _data:
---+            raise BadInputError("No valid fields provided to update")
+--+    async def get_company_employee_count(self,company_id:str):
+--+        return ic(await self.db.user.count_documents({'company':company_id}))
 --+    
---+        await self.collection.update_one({"type":"settings","company":self.company},{"$set":_data})
---         return 'ok'
--- 
---     
---@@ -222,20 +235,15 @@ class KnowledgeBase():
---         result = await current_settings.update_settings({"category":data.model_dump(exclude="company_description",by_alias=True)})
---         return result
---     
----    async def edit_maincategory(self,data:MainCategoriesCreate):
---+    async def edit_maincategory(self,data:MainCategoriesUpdateScheme):
---         current_settings=Settings(self.request)
----        doc=await current_settings.get_settings()
----        
---         result = await current_settings.update_settings({"category":data.model_dump(exclude_none=True,exclude_unset=True)})
---         return result
----        
---     
----    async def edit_maincategory(self):
----        # verify_password
----        pass
----    
----    async def delete_maincategory(self):
----        pass
---+    async def reset_maincategory(self):
---+        template_data=MainCategoriesTemplate().model_dump(by_alias=True,exclude="company_description")
---+        return await Settings(self.request).update_settings({"category":template_data})
---+        
---     
---     async def dispense_department(self,data:DispenseDepartment):
---         data_dict=data.model_dump(exclude_none=True,by_alias=True)
---@@ -398,16 +406,45 @@ class Company():
---         return "ok"
--- 
--- 
----class Chat():
---+class AI():
---     def __init__(self,request:Request):
---         db = request.app.state.db
---         self.collection = db.chat_history
---         self.request=request
---+        
---+        self.agent=request.app.state.agent
--- 
----    async def create_chat_record(self, data:ChatRecordCreate):
---+    async def create_record(self, record_type:str,data:RecordCreate ):
---+        data.type=record_type
---+        data=_ensure_model(data,RecordCreate)
---         data_dict = data.model_dump()
---         return await self.collection.insert_one(data_dict)
---     
----    async def create_chat_record(self, data:ChatRecordEdit):
---+    async def edit_record(self, data:RecordEdit):
---+        data=_ensure_model(data,RecordEdit)
---         data_dict = data.model_dump(exclude_unset=True,exclude_none=True)
----        return await self.collection.update_one({"$set":data_dict})
+--+    async def get_knowledge_count(self,company_id:str,filter:dict={}):
+--+        search_filter={'company':company_id}
+--+        search_filter.update(filter)
+--+        return ic(await self.db.knowledge.count_documents(search_filter))
 --\ No newline at end of file
---+        return await self.collection.update_one({"$set":data_dict})
---+    
---+    async def ask_question(self,question,by):
---+        instructions="""
---+        
---+        
---+        
---+        
---+        """
---+        
---+        resp = await self.agent.responses.create(
---+            model="gpt-5-nano-2025-08-07",
---+            instruction=instructions,
---+            # gpt-5-nano-2025-08-07
---+            prompt=question,
---+        )
---+        self.create_record("chat",RecordCreate(
---+            ask=question,
---+            answer=resp.output.text,
---+            user=by
---+        ))
---+        print(resp.output.text)
---+
---+
---+
---diff --git a/readme.md b/readme.md
---index 20659d4..e60b6bc 100644
------ a/readme.md
---+++ b/readme.md
---@@ -141,7 +141,8 @@ curl -X GET http://localhost:8000/checkauth \
--- ## 測試資料
--- - /api/company/setup_company_structure
---   - 
----    ```json
---+    
---+```json
---   {
---   "departments": [
---     {
---@@ -216,9 +217,9 @@ curl -X GET http://localhost:8000/checkauth \
---     }
---   ]
--- }
----        ```
----
---+```
--- 
---+```json
--- {
---   "company_description": "本企業概況為全面掌握日用品與美妝零售通路，經營實體門市超過200家，商品類別多元，SKU 數量眾多，涵蓋生活百貨、個人清潔、美妝保養、保健食品。內部人力規模涵蓋門市、倉儲、客服、採購等，且立有標準SOP流程。希望能透過知識庫強化內部作業與回饋機制。",
---   "品質管理": {
---@@ -295,20 +296,22 @@ curl -X GET http://localhost:8000/checkauth \
---     "status": false
---   }
--- }
---+```
--- 
--- 
----
----{
----  "品質管理": ["總部","商品部"],
----  "倉儲管理": ["總部","營運部"],
----  "生產管理": ["總部"],
----  "客戶服務": ["總部","客戶服務中心"],
----  "採購管理": ["總部","採購部"],
----  "設備維護": ["總部"],
----  "能源管理": ["總部","行銷策劃部"],
----  "物流與配送": ["總部"],
----  "研發與創新": ["總部"],
----  "財務管理": ["總部"],
----  "人力資源": ["總部","人力資源部"],
----  "數據安全與治理": ["總部"]
----}
---\ No newline at end of file
---+```json
---+  {
---+    "品質管理": ["總部","商品部"],
---+    "倉儲管理": ["總部","營運部"],
---+    "生產管理": ["總部"],
---+    "客戶服務": ["總部","客戶服務中心"],
---+    "採購管理": ["總部","採購部"],
---+    "設備維護": ["總部"],
---+    "能源管理": ["總部","行銷策劃部"],
---+    "物流與配送": ["總部"],
---+    "研發與創新": ["總部"],
---+    "財務管理": ["總部"],
---+    "人力資源": ["總部","人力資源部"],
---+    "數據安全與治理": ["總部"]
---+  }
---+```
---\ No newline at end of file
---diff --git a/schemes.py b/schemes.py
---deleted file mode 100644
---index 27538dd..0000000
------ a/schemes.py
---+++ /dev/null
---@@ -1,179 +0,0 @@
----from fastapi import HTTPException
----
----from datetime import datetime, timezone
----from zoneinfo import ZoneInfo
----
----from typing import Any, Optional, Literal
----from pydantic import BaseModel,EmailStr, field_serializer,Field,ConfigDict
----
----from tools import bson_to_jsonable
----
----class UserRegisterScheme(BaseModel):
----    username:EmailStr # account=email
----    password:str
----    name:Optional[str]=""
----    authority:Literal['normal','owner','admin']='normal'
----    company:Optional[str]=""
----    phone:Optional[str]=""
----    role:Optional[str]="" # 角色 
----    token:Optional[str]=None # permittion to create a admin account
----    note:Optional[str]=""
----    department:str=""
----    
----class UserLoginScheme(BaseModel):
----    username:EmailStr # account=email
----    password:str
----
----class KnowledgeSchemeCreate(BaseModel):
----    _id:str
----    department:list[str]
----    keywords:list[str]=[]
----    tag:list[str] =[]
----    
----    example_question:str
----    example_answer:str = ""
----    
----    main_category:str 
----    sub_category:str 
----
----    files:list[str] = []
----    status:Literal['solved','unsolved']="unsolved" #是否被解決 
----    created_by:str="" #?
----    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
----
----    @field_serializer("timestamp")
----    def _serialize_timestamp(self, v: datetime):
----        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
----        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
----    
----class ContactPerson(BaseModel):
----    name: str
----    email: EmailStr
----    phone: Optional[str] = ""
----    
----class MainCategoryConfig(BaseModel):
----    description: list[str] = []
----    sub: list[str] = []
----    access: list[str] = []
----    status: bool
----
----class MainCategoriesCreate(BaseModel):
----    # 僅這些 key 合法；沒出現在這裡的 key 會被直接擋掉
----    # 內部以英文欄位名維護；對外用中文 key（alias）收/回資料。
----    # 只允許下列欄位（extra='forbid'），未列出的 key 會被擋掉。
----    company_description:str = ""
----    
----    quality_management: Optional[MainCategoryConfig] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
----    warehouse_management: Optional[MainCategoryConfig] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理"    )
----    production_management: Optional[MainCategoryConfig] = Field(None, validation_alias="生產管理", serialization_alias="生產管理"    )
----    customer_service: Optional[MainCategoryConfig] = Field(None, validation_alias="客戶服務", serialization_alias="客戶服務"    )
----    procurement_management: Optional[MainCategoryConfig] = Field(None, validation_alias="採購管理", serialization_alias="採購管理"    )
----    equipment_maintenance: Optional[MainCategoryConfig] = Field(None, validation_alias="設備維護", serialization_alias="設備維護"    )
----    energy_management: Optional[MainCategoryConfig] = Field(None, validation_alias="能源管理", serialization_alias="能源管理"    )
----    logistics_and_distribution: Optional[MainCategoryConfig] = Field(None, validation_alias="物流與配送", serialization_alias="物流與配送"    )
----    r_n_d_innovation: Optional[MainCategoryConfig] = Field(None, validation_alias="研發與創新", serialization_alias="研發與創新"    )
----    financial_management: Optional[MainCategoryConfig] = Field(None, validation_alias="財務管理", serialization_alias="財務管理"    )
----    human_resources: Optional[MainCategoryConfig] = Field(None, validation_alias="人力資源", serialization_alias="人力資源"    )
----    data_security_and_governance: Optional[MainCategoryConfig] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理"    )
----    # extra='forbid'
----    # 控制「額外 key」的處理方式。
----    # Pydantic 預設是 extra='ignore'（沒定義的 key 會被丟掉），
----    # 你這裡改成 forbid → 沒定義的 key 會直接報錯
----
----
----class CompanyScheme(BaseModel):
----    company_name: str
----    company_type: list[str]
----    company_unicode: str  # 統編
----    company_property: list[str]
----    contact_person: ContactPerson
----    company_description: Optional[str] = ""   # 產業型態
----    company_scale:str="",#50~100
----    department_count:int
----    language:str="zh"
----
----class CompanyStructureListItem(BaseModel):
----    department_name: str
----    parent_department: str
----    role: str  # 職責描述
----    person_in_charge: ContactPerson
----
----class CompanyStructureListItemDB(BaseModel):
----    department_name: str
----    parent_department: str
----    role: str  # 職責描述
----    person_in_charge_id: str
----
----
----
----# Response Scheme
----
----#定義標準的回應格式
----class ResponseModel(BaseModel):
----    success: bool = True
----    status_code: int = 200 
----    message: str # 提示訊息
----    data: Optional[Any] = None #如果需要夾帶資料的話可以放這裡
----
----    @field_serializer('data') # 針對data這個欄位進行客製化的serialize，解決bson會出現的問題
----    def serialize_data(self, v):
----        return bson_to_jsonable(v)  # 低迴進行控制
----    
----class CompanyStructureSetupScheme(BaseModel):
----    departments:list[CompanyStructureListItem]
----    
----class DispenseDepartment(BaseModel):
----    quality_management: Optional[list[str]] = Field(None, validation_alias="品質管理", serialization_alias="品質管理")    
----    warehouse_management: Optional[list[str]] = Field(None, validation_alias="倉儲管理", serialization_alias="倉儲管理")
----    production_management: Optional[list[str]] = Field(None, validation_alias="生產管理", serialization_alias="生產管理")
----    customer_service: Optional[list[str]] = Field(None, validation_alias="客戶服務", serialization_alias="客戶服務")
----    procurement_management: Optional[list[str]] = Field(None, validation_alias="採購管理", serialization_alias="採購管理")
----    equipment_maintenance: Optional[list[str]] = Field(None, validation_alias="設備維護", serialization_alias="設備維護")
----    energy_management: Optional[list[str]] = Field(None, validation_alias="能源管理", serialization_alias="能源管理")
----    logistics_and_distribution: Optional[list[str]] = Field(None, validation_alias="物流與配送", serialization_alias="物流與配送")
----    r_n_d_innovation: Optional[list[str]] = Field(None, validation_alias="研發與創新", serialization_alias="研發與創新")
----    financial_management: Optional[list[str]] = Field(None, validation_alias="財務管理", serialization_alias="財務管理")
----    human_resources: Optional[list[str]] = Field(None, validation_alias="人力資源", serialization_alias="人力資源")
----    data_security_and_governance: Optional[list[str]] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理")
----
----
----# 在原本HTTPException的基礎上加入data和code欄位
----class CustomHTTPException(HTTPException):
----    def __init__(self, message: str, status_code: int = 400, data: Any = None):
----        # super()本身只會拿到父物件，如果需要call 父親物件的constructor需要手動另外呼叫
----        super().__init__(status_code=status_code, detail=message)
----        self.data = data
----        
----        
----class  QuestionReponse(BaseModel):
----    response:str
----
----class ChatRecordCreate(BaseModel):
----    ask: str
----    answer: str
----    user: str
----    status:Literal['normal','suggest-solved','suggest-unsolved']
----    reponse:QuestionReponse=""
----    # Store as timezone-aware UTC datetime; auto-fill on creation
----    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
----
----    @field_serializer("timestamp")
----    def _serialize_timestamp(self, v: datetime):
----        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
----        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
----    
----    
----class ChatRecordEdit(BaseModel):
----    ask: str =""
----    answer: str =""
----    user: str=""
----    status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
----    reponse:QuestionReponse=""
----    # Store as timezone-aware UTC datetime; auto-fill on creation
----    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
----
----    @field_serializer("timestamp")
----    def _serialize_timestamp(self, v: datetime):
----        # Present as Asia/Taipei local time in ISO 8601 (e.g., 2025-09-10T12:34:56+08:00)
----        return v.astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
----    
---\ No newline at end of file
---diff --git a/test.py b/test.py
---index 0bac59c..735ab61 100644
------ a/test.py
---+++ b/test.py
---@@ -1,13 +1,31 @@
----from openai import OpenAI
--- import os
--- 
----client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
--- 
----response = client.completions.create(
----    model="gpt-3.5-turbo-instruct",  # 取代原本的 text-davinci-003
----    prompt="講個笑話來聽聽",
----    max_tokens=128,
----    temperature=0.5,
----)
---+import asyncio
---+from openai import AsyncOpenAI
--- 
----print(response.choices[0].text)
---\ No newline at end of file
---+client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])  # async client
---+
---+async def main():
---+    # Instruct-style completion (short by default unless you set max_tokens)
---+    resp = await client.completions.create(
---+        model="gpt-3.5-turbo-instruct",
---+        prompt="講個笑話",
---+        max_tokens=200,           # ✅ increase allowed output length (default is small)
---+        temperature=0.8,
---+        stop=None,
---+    )
---+    # Print the first choice's text content
---+    print(resp.choices[0].text.strip())
---+
---+    # --- Optional: chat-completions variant ---
---+    # If you prefer the chat endpoint (often better maintained), uncomment below:
---+    # chat = await client.chat.completions.create(
---+    #     model="gpt-4o-mini",
---+    #     messages=[{"role": "user", "content": "講個笑話"}],
---+    #     max_tokens=200,
---+    # )
---+    # print(chat.choices[0].message.content)
---+
---+asyncio.run(main())
---+ 
---\ No newline at end of file
---diff --git a/tools.py b/tools.py
---index 31cbf58..1ceb782 100644
------ a/tools.py
---+++ b/tools.py
---@@ -1,5 +1,6 @@
--- from bson import ObjectId
----
---+from pydantic import BaseModel
---+from typing import TypeVar
--- import secrets
--- 
--- def token_generator(length:int=24):
---@@ -12,4 +13,11 @@ def bson_to_jsonable(obj):
---         return {k: bson_to_jsonable(v) for k, v in obj.items()}
---     if isinstance(obj, list):
---         return [bson_to_jsonable(v) for v in obj]
----    return obj
---\ No newline at end of file
---+    return obj
---+
---+M = TypeVar("M", bound=BaseModel)# 讓編譯器可以看得懂
---+def _ensure_model(data, model_type: type[M]) -> M:
---+    if isinstance(data, model_type):
---+        return data
---+    return model_type.model_validate(data)
---+
 -diff --git a/models.py b/models.py
--index b301c71..f34b280 100644
+-deleted file mode 100644
+-index 071f6a8..0000000
 ---- a/models.py
--+++ b/models.py
--@@ -447,4 +447,16 @@ class AI():
--         print(resp.output.text)
-- 
-- 
+-+++ /dev/null
+-@@ -1,516 +0,0 @@
+--from motor.motor_asyncio import AsyncIOMotorClient # mongodb driver
+--from fastapi import FastAPI, HTTPException, Request
+--from passlib.context import CryptContext
+--from icecream import ic
+--from bson import ObjectId
+--from openai import AsyncOpenAI
 --
--+class Statistic():
--+    def __init__(self,request:Request):
--+        self.db = request.app.state.db
--+        self.collection = self.db.companies
--+        self.request=request
--+        
--+    async def get_company_employee_count(self,company_id:str):
--+        return ic(await self.db.user.count_documents({'company':company_id}))
--+    
--+    async def get_knowledge_count(self,company_id:str,filter:dict={}):
--+        search_filter={'company':company_id}
--+        search_filter.update(filter)
--+        return ic(await self.db.knowledge.count_documents(search_filter))
+--import os
+--from contextlib import asynccontextmanager
+--from dotenv import load_dotenv
+--
+--from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
+--from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+--from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
+--from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
+--from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+--from schemes.settingsSchemes import SettingsUpdateScheme
+--from errors import UserError,SettingsError,CompanyError,BadInputError
+--from tools import token_generator,_ensure_model
+--
+--load_dotenv()
+--
+--pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+--# 建立好context之後基本上就只有verify和has可以使用
+--
+--def verify_password(plain_password, hashed_password):
+--    return pwd_context.verify(plain_password, hashed_password)
+--
+--def get_password_hash(password):
+--    return pwd_context.hash(password)
+--
+--
+--@asynccontextmanager
+--async def lifespan(app: FastAPI):
+--    # 啟動時
+--    # configuring local testing env
+--    connection_string = "mongodb+srv://timothychenpc:" + os.environ['DB_PASSWORD'] + "@cluster0.usqn9tz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+--    ic(os.environ['MODE'])
+--    if os.environ['MODE'] == 'local':
+--        connection_string = "mongodb://localhost:27017/"
+--
+--    # MongoDB Agent 
+--    client = AsyncIOMotorClient(connection_string)
+--    app.state.db_client = client
+--    app.state.db = client["main"]
+--    app.state.user = app.state.db.user
+--    # OpenAI Agent
+--    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+--    
+--    try:
+--        yield
+--    finally:
+--        client.close()
+--
+--app = FastAPI(lifespan=lifespan)
+--
+--
+--class User():
+--    def __init__(self,request:Request):
+--        db = request.app.state.db
+--        self.usercollection = db.user
+--        self.request=request
+--
+--    async def login(self, user: UserLoginScheme):# Request本身只是class不是物件
+--
+--        doc = await self.usercollection.find({"username": user.username}).to_list()
+--        if len(doc) == 0:
+--            raise CustomHTTPException(status_code=404, message="account not found")
+--        if verify_password(user.password, doc[0]['password']):
+--            print('success')
+--            self.request.session['login']={
+--                'username':user.username,
+--                'authority':doc[0]['authority'],
+--                "company_id":doc[0]['company'],
+--            }
+--            return 'success'
+--        else:
+--            raise CustomHTTPException(status_code=401, message="password not correct")
+--        
+--    
+--    async def logout(self):
+--        self.request.session.clear()
+--        return "logged out!"
+--    
+--    async def register(self, user:UserRegisterScheme):
+--        doc= await self.usercollection.find({'username':user.username}).to_list()# real action happens when .to_list()
+--        if len(doc)!=0:
+--            ic(user.username)
+--            ic(doc)
+--            raise CustomHTTPException(status_code=409,message="account already exists!")# try to create something that already exists
+--        else:
+--            if user.authority in ('admin', 'owner'):
+--                
+--                # 之後看還有沒有需要
+--                if user.token and os.environ.get("ADMIN_TOKEN") and user.token == os.environ.get("ADMIN_TOKEN"):
+--                    
+--                    if not user.company:
+--                        company_id = await Company(self.request).create_empty_company(created_by=user.username)
+--                    else:
+--                        company_id=user.company
+--                    data = {
+--                        "username": user.username,
+--                        "password": get_password_hash(user.password),
+--                        "authority": user.authority,
+--                        "name":user.name,
+--                        "company": company_id,
+--                        "phone": user.phone,
+--                        "role": user.role,
+--                        "note":user.note,
+--                        "department":user.department
+--                    }
+--
+--                    
+--                    try:
+--                        result = await self.usercollection.insert_one(data)
+--                        ic(result)
+--                        return result.inserted_id
+--                    except Exception as e:
+--                        # compensation: remove the created company to avoid orphaned doc
+--                        try:
+--                            await Company(self.request).delete_company(company_id)
+--                        except Exception:
+--                            pass
+--                        raise UserError("failed to create admin user")
+--                else:
+--                    raise UserError("permission denied")
+--            else:
+--                # normal create
+--                data = {
+--                        "username": user.username,
+--                        "password": get_password_hash(user.password),
+--                        "authority": user.authority,
+--                        "name":user.name,
+--                        "company": user.company,
+--                        "phone": user.phone,
+--                        "role": user.role,
+--                        "note":user.note,
+--                        "department":user.department
+--                }
+--                result=await self.usercollection.insert_one(data)
+--                ic(result)
+--                return result.inserted_id
+--    
+--    async def register_many(self,company_id:str,userdata:list[UserRegisterPasswordPresetScheme]):
+--        # 要補之後針對departments的資料格式進行篩選
+--        
+--        # create accoutnsa
+--        temp_users=[]
+--        temp_user_ids=[]
+--        departments= await Company(self.request).get_company_departmentlist()
+--        try:
+--            
+--            for user in userdata:
+--                user.company=company_id
+--                user.password=token_generator(12),# 隨機產生密碼
+--                
+--                if user.department not in departments:
+--                    raise BadInputError("User Department data error, please check and try again.")
+--                
+--                user_id = await User(self.request).register(user)
+--                temp_user_ids.append(user_id)
+--
+--            # send email
+--            ic(temp_users)
+--            ic(temp_user_ids)
+--            return "ok"
+--        except Exception as e:
+--            for id in temp_user_ids:
+--                await User(self.request).delete({"_id":id})
+--            raise CompanyError(str(e))
+--    
+--    async def forget(self):
+--        pass
+--    
+--    async def get_user(self,filter:dict):
+--        return await self.usercollection.find_one(filter)
+--    
+--    async def delete(self, filter:dict):
+--        return await self.usercollection.delete_many(filter) #delete_many 可以適用一個或是多個
+--        # 為什麼這裡需要await
+--    
+--class Settings():
+--    def __init__(self,request:Request):# init function 不能是async
+--        db = request.app.state.db
+--        self.collection = db.settings
+--        self.company = ""
+--        self.data={}
+--        self.request=request
+--        
+--        if 'login' in self.request.session:
+--            ic('login')
+--            self.company=self.request.session['login'].get('company_id','')
+--            ic(self.company)
+--            if self.company=='':
+--                raise SettingsError("No Company data")
+--        else:
+--            
+--            raise SettingsError("Not logged in")
+--        
+--
+--    async def get_settings(self ):# Request本身只是class不是物件
+--        print('company',self.company)
+--        
+--        result= await self.collection.find({"type":"settings","company":self.company}).to_list()
+--        if len(result)==0:
+--            simple_settings={
+--                "company":self.company,# 創建後直接進行綁定
+--                "type":"settings",
+--                "category":{
+--                }
+--                }
+--            await self.collection.insert_one(simple_settings)
+--            self.data=simple_settings
+--            return simple_settings
+--        else:
+--            self.data=result[0]
+--            return result[0]
+--            
+--    
+--    async def update_settings(self,data:dict | SettingsUpdateScheme):
+--        _data_model=_ensure_model(data,SettingsUpdateScheme)
+--        _data=_data_model.model_dump(exclude_none=True,exclude_unset=True,by_alias=True)
+--        
+--        if not _data:
+--            raise BadInputError("No valid fields provided to update")
+--    
+--        await self.collection.update_one({"type":"settings","company":self.company},{"$set":_data})
+--        return 'ok'
+--
+--    
+--class KnowledgeBase():
+--    def __init__(self,request:Request):
+--        db = request.app.state.db
+--        self.collection = db.settings
+--        self.knowledge = db.knowledge
+--        self.company = ""
+--        self.request=request
+--        
+--        if 'login' in self.request.session:
+--            self.company=self.request.session['login'].get('company_id','')
+--            ic(self.company)
+--            if self.company=='':
+--                raise SettingsError("No Company data")
+--        else:
+--            
+--            raise SettingsError("Not logged in")
+--        
+--    async def create_knowledge(self,data:KnowledgeSchemeCreate):
+--        ic(data.model_dump())
+--        result=await self.knowledge.insert_one(data.model_dump())
+--        return result.inserted_id
+--    
+--    async def get_maincategory(self):# Request本身只是class不是物件
+--        current_settings=Settings(self.request)
+--        result = await current_settings.get_settings()
+--        return list(result['category'].keys())
+--    
+--    async def get_subcategory(self,main_category:str):# Request本身只是class不是物件
+--        current_settings=Settings(self.request)
+--        result = await current_settings.get_settings()
+--        for i in result['category']:
+--            if i==main_category:
+--                return result['category'][i]['sub']
+--        return []
+--    
+--    async def add_subcategory(self,main_category:str,sub_category:str):# Request本身只是class不是物件
+--        current_settings=Settings(self.request)
+--        result = await current_settings.get_settings()
+--        for i in result['category']:
+--            if i==main_category:
+--                if sub_category in result['category'][i]['sub']:
+--                    return 'already exists'
+--                
+--                result['category'][i]['sub'].append(sub_category)
+--        result = await current_settings.update_settings({"category":result['category']})
+--    
+--    async def create_maincategory(self,data:MainCategoriesCreate):
+--        current_settings=Settings(self.request)
+--        doc=await current_settings.get_settings()
+--        
+--        result = await current_settings.update_settings({"category":data.model_dump(exclude="company_description",by_alias=True)})
+--        return result
+--    
+--    #bug
+--    async def edit_maincategory(self,data:MainCategoriesUpdateScheme):
+--        current_settings=Settings(self.request)
+--        result = await current_settings.update_settings({"category":data.model_dump(exclude_none=True,exclude_unset=True)})
+--        return result
+--    
+--    async def reset_maincategory(self):
+--        template_data=MainCategoriesTemplate().model_dump(by_alias=True,exclude="company_description")
+--        return await Settings(self.request).update_settings({"category":template_data})
+--        
+--    
+--    async def dispense_department(self,data:DispenseDepartment):
+--        data_dict=data.model_dump(exclude_none=True,by_alias=True)
+--        ic(data_dict)
+--        setting_obj=Settings(self.request)
+--        setting=await setting_obj.get_settings()
+--        for i in data_dict:
+--            if i not in setting['category']:
+--                raise BadInputError("category 不存在")
+--            
+--            if setting['category'][i]['status']:
+--                setting['category'][i]['access']=data_dict[i]
+--            else:
+--                ic(i)
+--                ic(setting['category'][i]['status'])
+--        return await setting_obj.update_settings(setting)
+--    
+--class Company():
+--    def __init__(self,request:Request):
+--        db = request.app.state.db
+--        self.collection = db.companies
+--        self.request=request
+--
+--    async def create_empty_company(self, created_by: str):
+--        file = {
+--            "company_name": "",
+--            "company_type": "",
+--            "company_unicode": "",
+--            "company_property": [],
+--            "contact_person": {
+--                "name": "",
+--                "email": "",
+--                "phone": "",
+--            },
+--            "company_description": "",
+--            "created_by": created_by,
+--            "company_scale":"",#50~100
+--            "department_count":"",# 部門數量
+--            "language":"zh",
+--            "departments":{}
+--        }
+--        result = await self.collection.insert_one(file)
+--        return str(result.inserted_id)
+--
+--    async def get_company(self,company_id):# Request本身只是class不是物件
+--        oid=ObjectId(company_id)
+--        result = await self.collection.find_one({"_id":oid})
+--        return result
+--    
+--    async def setup_company_structure(self,company_id:str,departments:CompanyStructureSetupScheme):
+--        await self.edit_company(company_id, departments.model_dump(exclude_none=True,exclude_unset=True))
+--        return "ok"
+--    
+--    async def get_company_departmentlist(self,company_id:str):
+--        oid=ObjectId(company_id)
+--        result = await self.collection.find_one({"_id":oid})
+--        if not result:
+--            raise BadInputError("Company not found ")
+--        
+--        data=[]
+--        for i in result['departments']:
+--            data.append(i['department_name'])
+--        
+--        return data
+--    
+--    
+--    async def create_company(self,data:CompanyScheme):
+--        file={
+--            "company_name":data.company_name,
+--            "company_type":data.company_type,
+--            "company_unicode":data.company_unicode,#統編
+--            "company_property":data.company_property,
+--            "contact_person":{
+--                "name":data.contact_person.name,
+--                "email":data.contact_person.email,
+--                "phone":data.contact_person.phone
+--                },
+--            "company_description":"",
+--            "company_scale":"",#50~100
+--            "department_count":0,# 部門數量
+--            "language":"zh",
+--            "departments":{}
+--        }
+--        result=await self.collection.insert_one(file)
+--        return str(result.inserted_id)
+--        
+--    
+--    async def edit_company(self, company_id: str, data: dict):
+--        # Validate ObjectId
+--        # try:
+--        oid = ObjectId(company_id)
+--        # except Exception:
+--        #     raise CompanyError("invalid company id")
+--
+--        # Whitelist allowed fields
+--        allowed_keys = {
+--            "company_name",
+--            "company_type",
+--            "company_unicode",
+--            "company_property",
+--            "contact_person",
+--            "company_scale",
+--            "company_description",
+--            "departments"
+--        }
+--        # 之後應該要改掉
+--        if not isinstance(data,dict):
+--            data=data.model_dump(exclude_unset=True)
+--        update_data = {k: v for k, v in (data or {}).items() if k in allowed_keys}
+--
+--        if not update_data:
+--            raise CompanyError("no valid fields to update")
+--
+--        result = await self.collection.update_one({"_id": oid}, {"$set": update_data})
+--        if result.matched_count == 0:
+--            raise CompanyError("company not found")
+--        return "ok"
+--    
+--    async def delete_company(self, company_id: str):
+--        """Delete a company document by its string id."""
+--        # try:
+--        oid = ObjectId(company_id)
+--        # except Exception:
+--        #     raise CompanyError("invalid company id")
+--
+--        result = await self.collection.delete_one({"_id": oid})
+--        if result.deleted_count == 0:
+--            raise CompanyError("company not found")
+--        return "ok"
+--
+--
+--class AI():
+--    def __init__(self,request:Request):
+--        db = request.app.state.db
+--        self.collection = db.chat_history
+--        self.request=request
+--        
+--        self.agent=request.app.state.agent
+--
+--    async def create_record(self, record_type:str,data:RecordCreate ):
+--        data.type=record_type
+--        data=_ensure_model(data,RecordCreate)
+--        data_dict = data.model_dump()
+--        return await self.collection.insert_one(data_dict)
+--    
+--    async def edit_record(self, data:RecordEdit):
+--        data=_ensure_model(data,RecordEdit)
+--        data_dict = data.model_dump(exclude_unset=True,exclude_none=True)
+--        return await self.collection.update_one({"$set":data_dict})
+--    
+--    async def suggesting(self,prompt,by,instructions=""):
+--        return await self.ask_ai(prompt,"suggesting",by,instructions)
+--    
+--    async def chat(self,prompt,by,instructions=""):
+--        return await self.ask_ai(prompt,"chat",by,instructions)
+--    
+--    async def auto_tagging(self,categories:list[str],data,by,extend:bool=False,count=1,instructions=""):
+--        extend={True:"允許",False:"不允許"}[extend]
+--        instructions="""
+--        以下是背景設定：
+--        ——————————————————
+--        你是我們公司最強大的人工智慧，所以接下來的所有回答請保證專業性，以及確認回答的可靠性還有準確度，並且按照要求進行回覆。
+--        """
+--        
+--        prompt = f"""
+--        
+--        
+--        以下是要求：
+--        ——————————————————
+--
+--        請你幫我針對以下的內容進行分類：
+--        目前所有的分類：{categories}。
+--        需要進行分類的內容：{data}。
+--        是否允許創建新的分類：{extend}
+--        請幫我思考目標內容與現有分類的關係，然後從中挑選{count}個最合適的分類進行回覆。
+--        注意：回覆的時候直接回覆那個分類名稱即可，不要有任何多餘的文字和標點符號！
+--
+--
+--        以下是範例：
+--        ——————————————————
+--        目前所有的分類：["品質管理","倉儲管理","生產管理","客戶服務","採購管理","設備維護","能源管理","物流與配送","研發與創新","財務管理","人力資源","數據安全與治理"]。
+--        需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
+--        挑選分類數：1
+--        你的回應：品質管理
+--        ——————————————————
+--        目前所有的分類：["品質管理","倉儲管理","生產管理","客戶服務","採購管理","設備維護","能源管理","物流與配送","研發與創新","財務管理","人力資源","數據安全與治理"]。
+--        需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
+--        挑選分類數：2
+--        你的回應：品質管理,客戶服務
+--        """
+--        return await self.ask_ai(instructions+prompt,"auto-tagging",by)
+--    
+--    async def ask_ai(self,prompt,type,by):
+--        if type not in ['chat','auto-tagging','suggesting']:
+--            raise BadInputError("ai record type error")
+--        
+--        resp = await self.agent.responses.create(
+--            model="gpt-5-nano-2025-08-07",
+--            # gpt-5-nano-2025-08-07
+--            input=prompt,
+--        )
+--        await self.create_record(type,RecordCreate(
+--            ask=prompt,
+--            answer=resp.output_text,
+--            user=by,
+--            type=type
+--        ))
+--        return resp.output_text
+--
+--
+--class Statistic():
+--    def __init__(self,request:Request):
+--        self.db = request.app.state.db
+--        self.collection = self.db.companies
+--        self.request=request
+--        
+--    async def get_company_employee_count(self,company_id:str):
+--        return ic(await self.db.user.count_documents({'company':company_id}))
+--    
+--    async def get_knowledge_count(self,company_id:str,filter:dict={}):
+--        search_filter={'company':company_id}
+--        search_filter.update(filter)
+--        return ic(await self.db.knowledge.count_documents(search_filter))
 -\ No newline at end of file
-diff --git a/models.py b/models.py
-deleted file mode 100644
-index 071f6a8..0000000
---- a/models.py
-+++ /dev/null
-@@ -1,516 +0,0 @@
--from motor.motor_asyncio import AsyncIOMotorClient # mongodb driver
--from fastapi import FastAPI, HTTPException, Request
--from passlib.context import CryptContext
--from icecream import ic
--from bson import ObjectId
--from openai import AsyncOpenAI
--
--import os
--from contextlib import asynccontextmanager
--from dotenv import load_dotenv
--
--from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
--from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
--from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme
--from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
--from schemes.utilitySchemes import CustomHTTPException,ResponseModel
--from schemes.settingsSchemes import SettingsUpdateScheme
--from errors import UserError,SettingsError,CompanyError,BadInputError
--from tools import token_generator,_ensure_model
--
--load_dotenv()
--
--pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
--# 建立好context之後基本上就只有verify和has可以使用
--
--def verify_password(plain_password, hashed_password):
--    return pwd_context.verify(plain_password, hashed_password)
--
--def get_password_hash(password):
--    return pwd_context.hash(password)
--
--
--@asynccontextmanager
--async def lifespan(app: FastAPI):
--    # 啟動時
--    # configuring local testing env
--    connection_string = "mongodb+srv://timothychenpc:" + os.environ['DB_PASSWORD'] + "@cluster0.usqn9tz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
--    ic(os.environ['MODE'])
--    if os.environ['MODE'] == 'local':
--        connection_string = "mongodb://localhost:27017/"
--
--    # MongoDB Agent 
--    client = AsyncIOMotorClient(connection_string)
--    app.state.db_client = client
--    app.state.db = client["main"]
--    app.state.user = app.state.db.user
--    # OpenAI Agent
--    app.state.agent = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
--    
--    try:
--        yield
--    finally:
--        client.close()
--
--app = FastAPI(lifespan=lifespan)
--
--
--class User():
--    def __init__(self,request:Request):
--        db = request.app.state.db
--        self.usercollection = db.user
--        self.request=request
--
--    async def login(self, user: UserLoginScheme):# Request本身只是class不是物件
--
--        doc = await self.usercollection.find({"username": user.username}).to_list()
--        if len(doc) == 0:
--            raise CustomHTTPException(status_code=404, message="account not found")
--        if verify_password(user.password, doc[0]['password']):
--            print('success')
--            self.request.session['login']={
--                'username':user.username,
--                'authority':doc[0]['authority'],
--                "company_id":doc[0]['company'],
--            }
--            return 'success'
--        else:
--            raise CustomHTTPException(status_code=401, message="password not correct")
--        
--    
--    async def logout(self):
--        self.request.session.clear()
--        return "logged out!"
--    
--    async def register(self, user:UserRegisterScheme):
--        doc= await self.usercollection.find({'username':user.username}).to_list()# real action happens when .to_list()
--        if len(doc)!=0:
--            ic(user.username)
--            ic(doc)
--            raise CustomHTTPException(status_code=409,message="account already exists!")# try to create something that already exists
--        else:
--            if user.authority in ('admin', 'owner'):
--                
--                # 之後看還有沒有需要
--                if user.token and os.environ.get("ADMIN_TOKEN") and user.token == os.environ.get("ADMIN_TOKEN"):
--                    
--                    if not user.company:
--                        company_id = await Company(self.request).create_empty_company(created_by=user.username)
--                    else:
--                        company_id=user.company
--                    data = {
--                        "username": user.username,
--                        "password": get_password_hash(user.password),
--                        "authority": user.authority,
--                        "name":user.name,
--                        "company": company_id,
--                        "phone": user.phone,
--                        "role": user.role,
--                        "note":user.note,
--                        "department":user.department
--                    }
--
--                    
--                    try:
--                        result = await self.usercollection.insert_one(data)
--                        ic(result)
--                        return result.inserted_id
--                    except Exception as e:
--                        # compensation: remove the created company to avoid orphaned doc
--                        try:
--                            await Company(self.request).delete_company(company_id)
--                        except Exception:
--                            pass
--                        raise UserError("failed to create admin user")
--                else:
--                    raise UserError("permission denied")
--            else:
--                # normal create
--                data = {
--                        "username": user.username,
--                        "password": get_password_hash(user.password),
--                        "authority": user.authority,
--                        "name":user.name,
--                        "company": user.company,
--                        "phone": user.phone,
--                        "role": user.role,
--                        "note":user.note,
--                        "department":user.department
--                }
--                result=await self.usercollection.insert_one(data)
--                ic(result)
--                return result.inserted_id
--    
--    async def register_many(self,company_id:str,userdata:list[UserRegisterPasswordPresetScheme]):
--        # 要補之後針對departments的資料格式進行篩選
--        
--        # create accoutnsa
--        temp_users=[]
--        temp_user_ids=[]
--        departments= await Company(self.request).get_company_departmentlist()
--        try:
--            
--            for user in userdata:
--                user.company=company_id
--                user.password=token_generator(12),# 隨機產生密碼
--                
--                if user.department not in departments:
--                    raise BadInputError("User Department data error, please check and try again.")
--                
--                user_id = await User(self.request).register(user)
--                temp_user_ids.append(user_id)
--
--            # send email
--            ic(temp_users)
--            ic(temp_user_ids)
--            return "ok"
--        except Exception as e:
--            for id in temp_user_ids:
--                await User(self.request).delete({"_id":id})
--            raise CompanyError(str(e))
--    
--    async def forget(self):
--        pass
--    
--    async def get_user(self,filter:dict):
--        return await self.usercollection.find_one(filter)
--    
--    async def delete(self, filter:dict):
--        return await self.usercollection.delete_many(filter) #delete_many 可以適用一個或是多個
--        # 為什麼這裡需要await
--    
--class Settings():
--    def __init__(self,request:Request):# init function 不能是async
--        db = request.app.state.db
--        self.collection = db.settings
--        self.company = ""
--        self.data={}
--        self.request=request
--        
--        if 'login' in self.request.session:
--            ic('login')
--            self.company=self.request.session['login'].get('company_id','')
--            ic(self.company)
--            if self.company=='':
--                raise SettingsError("No Company data")
--        else:
--            
--            raise SettingsError("Not logged in")
--        
--
--    async def get_settings(self ):# Request本身只是class不是物件
--        print('company',self.company)
--        
--        result= await self.collection.find({"type":"settings","company":self.company}).to_list()
--        if len(result)==0:
--            simple_settings={
--                "company":self.company,# 創建後直接進行綁定
--                "type":"settings",
--                "category":{
--                }
--                }
--            await self.collection.insert_one(simple_settings)
--            self.data=simple_settings
--            return simple_settings
--        else:
--            self.data=result[0]
--            return result[0]
--            
--    
--    async def update_settings(self,data:dict | SettingsUpdateScheme):
--        _data_model=_ensure_model(data,SettingsUpdateScheme)
--        _data=_data_model.model_dump(exclude_none=True,exclude_unset=True,by_alias=True)
--        
--        if not _data:
--            raise BadInputError("No valid fields provided to update")
--    
--        await self.collection.update_one({"type":"settings","company":self.company},{"$set":_data})
--        return 'ok'
--
--    
--class KnowledgeBase():
--    def __init__(self,request:Request):
--        db = request.app.state.db
--        self.collection = db.settings
--        self.knowledge = db.knowledge
--        self.company = ""
--        self.request=request
--        
--        if 'login' in self.request.session:
--            self.company=self.request.session['login'].get('company_id','')
--            ic(self.company)
--            if self.company=='':
--                raise SettingsError("No Company data")
--        else:
--            
--            raise SettingsError("Not logged in")
--        
--    async def create_knowledge(self,data:KnowledgeSchemeCreate):
--        ic(data.model_dump())
--        result=await self.knowledge.insert_one(data.model_dump())
--        return result.inserted_id
--    
--    async def get_maincategory(self):# Request本身只是class不是物件
--        current_settings=Settings(self.request)
--        result = await current_settings.get_settings()
--        return list(result['category'].keys())
--    
--    async def get_subcategory(self,main_category:str):# Request本身只是class不是物件
--        current_settings=Settings(self.request)
--        result = await current_settings.get_settings()
--        for i in result['category']:
--            if i==main_category:
--                return result['category'][i]['sub']
--        return []
--    
--    async def add_subcategory(self,main_category:str,sub_category:str):# Request本身只是class不是物件
--        current_settings=Settings(self.request)
--        result = await current_settings.get_settings()
--        for i in result['category']:
--            if i==main_category:
--                if sub_category in result['category'][i]['sub']:
--                    return 'already exists'
--                
--                result['category'][i]['sub'].append(sub_category)
--        result = await current_settings.update_settings({"category":result['category']})
--    
--    async def create_maincategory(self,data:MainCategoriesCreate):
--        current_settings=Settings(self.request)
--        doc=await current_settings.get_settings()
--        
--        result = await current_settings.update_settings({"category":data.model_dump(exclude="company_description",by_alias=True)})
--        return result
--    
--    #bug
--    async def edit_maincategory(self,data:MainCategoriesUpdateScheme):
--        current_settings=Settings(self.request)
--        result = await current_settings.update_settings({"category":data.model_dump(exclude_none=True,exclude_unset=True)})
--        return result
--    
--    async def reset_maincategory(self):
--        template_data=MainCategoriesTemplate().model_dump(by_alias=True,exclude="company_description")
--        return await Settings(self.request).update_settings({"category":template_data})
--        
--    
--    async def dispense_department(self,data:DispenseDepartment):
--        data_dict=data.model_dump(exclude_none=True,by_alias=True)
--        ic(data_dict)
--        setting_obj=Settings(self.request)
--        setting=await setting_obj.get_settings()
--        for i in data_dict:
--            if i not in setting['category']:
--                raise BadInputError("category 不存在")
--            
--            if setting['category'][i]['status']:
--                setting['category'][i]['access']=data_dict[i]
--            else:
--                ic(i)
--                ic(setting['category'][i]['status'])
--        return await setting_obj.update_settings(setting)
--    
--class Company():
--    def __init__(self,request:Request):
--        db = request.app.state.db
--        self.collection = db.companies
--        self.request=request
--
--    async def create_empty_company(self, created_by: str):
--        file = {
--            "company_name": "",
--            "company_type": "",
--            "company_unicode": "",
--            "company_property": [],
--            "contact_person": {
--                "name": "",
--                "email": "",
--                "phone": "",
--            },
--            "company_description": "",
--            "created_by": created_by,
--            "company_scale":"",#50~100
--            "department_count":"",# 部門數量
--            "language":"zh",
--            "departments":{}
--        }
--        result = await self.collection.insert_one(file)
--        return str(result.inserted_id)
--
--    async def get_company(self,company_id):# Request本身只是class不是物件
--        oid=ObjectId(company_id)
--        result = await self.collection.find_one({"_id":oid})
--        return result
--    
--    async def setup_company_structure(self,company_id:str,departments:CompanyStructureSetupScheme):
--        await self.edit_company(company_id, departments.model_dump(exclude_none=True,exclude_unset=True))
--        return "ok"
--    
--    async def get_company_departmentlist(self,company_id:str):
--        oid=ObjectId(company_id)
--        result = await self.collection.find_one({"_id":oid})
--        if not result:
--            raise BadInputError("Company not found ")
--        
--        data=[]
--        for i in result['departments']:
--            data.append(i['department_name'])
--        
--        return data
--    
--    
--    async def create_company(self,data:CompanyScheme):
--        file={
--            "company_name":data.company_name,
--            "company_type":data.company_type,
--            "company_unicode":data.company_unicode,#統編
--            "company_property":data.company_property,
--            "contact_person":{
--                "name":data.contact_person.name,
--                "email":data.contact_person.email,
--                "phone":data.contact_person.phone
--                },
--            "company_description":"",
--            "company_scale":"",#50~100
--            "department_count":0,# 部門數量
--            "language":"zh",
--            "departments":{}
--        }
--        result=await self.collection.insert_one(file)
--        return str(result.inserted_id)
--        
--    
--    async def edit_company(self, company_id: str, data: dict):
--        # Validate ObjectId
--        # try:
--        oid = ObjectId(company_id)
--        # except Exception:
--        #     raise CompanyError("invalid company id")
--
--        # Whitelist allowed fields
--        allowed_keys = {
--            "company_name",
--            "company_type",
--            "company_unicode",
--            "company_property",
--            "contact_person",
--            "company_scale",
--            "company_description",
--            "departments"
--        }
--        # 之後應該要改掉
--        if not isinstance(data,dict):
--            data=data.model_dump(exclude_unset=True)
--        update_data = {k: v for k, v in (data or {}).items() if k in allowed_keys}
--
--        if not update_data:
--            raise CompanyError("no valid fields to update")
--
--        result = await self.collection.update_one({"_id": oid}, {"$set": update_data})
--        if result.matched_count == 0:
--            raise CompanyError("company not found")
--        return "ok"
--    
--    async def delete_company(self, company_id: str):
--        """Delete a company document by its string id."""
--        # try:
--        oid = ObjectId(company_id)
--        # except Exception:
--        #     raise CompanyError("invalid company id")
--
--        result = await self.collection.delete_one({"_id": oid})
--        if result.deleted_count == 0:
--            raise CompanyError("company not found")
--        return "ok"
--
--
--class AI():
--    def __init__(self,request:Request):
--        db = request.app.state.db
--        self.collection = db.chat_history
--        self.request=request
--        
--        self.agent=request.app.state.agent
--
--    async def create_record(self, record_type:str,data:RecordCreate ):
--        data.type=record_type
--        data=_ensure_model(data,RecordCreate)
--        data_dict = data.model_dump()
--        return await self.collection.insert_one(data_dict)
--    
--    async def edit_record(self, data:RecordEdit):
--        data=_ensure_model(data,RecordEdit)
--        data_dict = data.model_dump(exclude_unset=True,exclude_none=True)
--        return await self.collection.update_one({"$set":data_dict})
--    
+-diff --git a/schemes/aiSchemes.py b/schemes/aiSchemes.py
+-index 036aaae..d216683 100644
+---- a/schemes/aiSchemes.py
+-+++ b/schemes/aiSchemes.py
+-@@ -10,9 +10,11 @@ class RecordCreate(BaseModel):
+-     ask: str
+-     answer: str
+-     user: str
+-+    company:str
+-     status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
+-     type:Literal['chat','auto-tagging','suggesting']
+-     reponse:QuestionReponse=""
+-+    elapse_time:str=""
+-     # Store as timezone-aware UTC datetime; auto-fill on creation
+-     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+-     model_config = ConfigDict(revalidate_instances='always')
+-diff --git a/schemes/knowledgeBaseSchemes.py b/schemes/knowledgeBaseSchemes.py
+-index 679bfb2..734ce34 100644
+---- a/schemes/knowledgeBaseSchemes.py
+-+++ b/schemes/knowledgeBaseSchemes.py
+-@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
+- 
+- class KnowledgeSchemeCreate(BaseModel):
+-     _id:str
+-+    company:str
+-     department:list[str]=[]
+-     keywords:list[str]=[]
+-     tag:list[str] =[]
+-@@ -74,3 +75,20 @@ class MainCategoriesUpdateScheme(BaseModel): # useing for reset the data
+-     financial_management: Optional[MainCategoryConfig] = Field(None, validation_alias="財務管理", serialization_alias="財務管理"    )
+-     human_resources: Optional[MainCategoryConfig] = Field(None, validation_alias="人力資源", serialization_alias="人力資源"    )
+-     data_security_and_governance: Optional[MainCategoryConfig] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理"    )
+-+
+-+class SubCategoryAdd(BaseModel):
+-+    main_category:str
+-+    sub_category:str
+-+    
+-+class KnowledgeFilter(BaseModel):
+-+    main_category: Optional[str] = None
+-+    sub_category: Optional[str] = None
+-+    department: Optional[list[str]] = None
+-+    created_by: Optional[str] = None
+-+    keywords: Optional[str] = None
+-+    start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
+-+    end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
+-+    sort:Optional[str]=None
+-+    content:Optional[str]=None
+-+    limit:Optional[int]=None
+-+    satrt_index:Optional[int]=None
+-\ No newline at end of file
+-diff --git a/schemes/userSchemes.py b/schemes/userSchemes.py
+-index 45fec8c..06cb922 100644
+---- a/schemes/userSchemes.py
+-+++ b/schemes/userSchemes.py
+-@@ -1,6 +1,8 @@
+--from pydantic import BaseModel,EmailStr
+-+from pydantic import BaseModel,EmailStr,Field
+- from typing import Literal,Optional
+- 
+-+
+-+
+- class UserRegisterScheme(BaseModel):
+-     username:EmailStr # account=email
+-     password:str
+-@@ -11,7 +13,7 @@ class UserRegisterScheme(BaseModel):
+-     role:Optional[str]="" # 角色 
+-     token:Optional[str]=None # permittion to create a admin account
+-     note:Optional[str]=""
+--    department:Optional[list[str]] = list
+-+    department:Optional[list[str]] = Field(default_factory=list)
+-     
+- class UserRegisterPasswordPresetScheme(BaseModel):
+-     username:EmailStr # account=email
+diff --git a/errors.py b/errors.py
+index f884675..1e31d6f 100644
+--- a/errors.py
++++ b/errors.py
+@@ -1,6 +1,9 @@
+ class ActionSuggestionError(Exception):
+     pass
+ 
++class BusinessStrategyError(Exception):
++    pass
++
+ class SettingsError(Exception):
+     pass
+ 
+diff --git a/models/aiModel.py b/models/aiModel.py
+index f82ed4f..85d25eb 100644
+--- a/models/aiModel.py
++++ b/models/aiModel.py
+@@ -58,38 +58,52 @@ class AI():
+         ic(ObjectId(id))
+         return await self.collection.update_one({"_id":ObjectId(id)},{"$set":data_dict})
+     @trace
 -    async def suggesting(self,prompt,by,instructions=""):
--        return await self.ask_ai(prompt,"suggesting",by,instructions)
--    
+-        result=await self.ask_ai(instructions+prompt,"suggesting",by)
++    async def suggesting(self,prompt,instructions=""):
++        result=await self.ask_ai(instructions+prompt,"suggesting")
+         return result[0]
+     @trace
 -    async def chat(self,prompt,by,instructions=""):
--        return await self.ask_ai(prompt,"chat",by,instructions)
--    
+-        result= await self.ask_ai(instructions+prompt,"chat",by)
++    async def chat(self,prompt,instructions=""):
++        result= await self.ask_ai(instructions+prompt,"chat")
+         return result [0]
+     @trace
 -    async def auto_tagging(self,categories:list[str],data,by,extend:bool=False,count=1,instructions=""):
--        extend={True:"允許",False:"不允許"}[extend]
--        instructions="""
--        以下是背景設定：
--        ——————————————————
--        你是我們公司最強大的人工智慧，所以接下來的所有回答請保證專業性，以及確認回答的可靠性還有準確度，並且按照要求進行回覆。
--        """
--        
++    async def auto_tagging(self,categories:list[str],data,extend:bool=False,count=1,instructions="",my_model="",summary_tag=False):
+         extend_bool={True:"允許",False:"不允許"}[extend]
+         
 -        prompt = f"""
--        
--        
--        以下是要求：
--        ——————————————————
--
 -        請你幫我針對以下的內容進行分類：
--        目前所有的分類：{categories}。
--        需要進行分類的內容：{data}。
--        是否允許創建新的分類：{extend}
--        請幫我思考目標內容與現有分類的關係，然後從中挑選{count}個最合適的分類進行回覆。
--        注意：回覆的時候直接回覆那個分類名稱即可，不要有任何多餘的文字和標點符號！
--
++        if summary_tag:
++            prompt = f"""
++        請你幫我針對以下的內容進行摘要，精煉出幾個具有代表性，能夠反映出這些知識條目的特性和問題並且適合公司決策者看的標籤，並且可以使用流行用語，活潑一點，最好能夠體現你從這些內容中看到了什麼現象：
+         目前所有的分類：{categories}。
+         需要進行分類的內容：{data}。
+         是否允許創建新的分類：{extend_bool}
+         請幫我思考目標內容與現有分類的關係，然後從中挑選{count}個最合適的分類進行回覆。
++        
+         注意：回覆的時候直接回覆那個分類名稱即可，不要有任何多餘的文字和標點符號！
 -
 -        以下是範例：
 -        ——————————————————
@@ -1614,111 +1832,342 @@ index 071f6a8..0000000
 -        需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
 -        挑選分類數：2
 -        你的回應：品質管理,客戶服務
--        """
--        return await self.ask_ai(instructions+prompt,"auto-tagging",by)
--    
+         """
+-        result=await self.ask_ai(prompt,"auto-tagging",by)
++        else:
++            prompt = f"""
++            請你幫我針對以下的內容進行分類：
++            目前所有的分類：{categories}。
++            需要進行分類的內容：{data}。
++            是否允許創建新的分類：{extend_bool}
++            請幫我思考目標內容與現有分類的關係，然後從中挑選{count}個最合適的分類進行回覆。
++            注意：回覆的時候直接回覆那個分類名稱即可，不要有任何多餘的文字和標點符號！
++
++            以下是範例：
++            ——————————————————
++            目前所有的分類：["品質管理","倉儲管理","生產管理","客戶服務","採購管理","設備維護","能源管理","物流與配送","研發與創新","財務管理","人力資源","數據安全與治理"]。
++            需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
++            挑選分類數：1
++            你的回應：品質管理
++            ——————————————————
++            目前所有的分類：["品質管理","倉儲管理","生產管理","客戶服務","採購管理","設備維護","能源管理","物流與配送","研發與創新","財務管理","人力資源","數據安全與治理"]。
++            需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
++            挑選分類數：2
++            你的回應：品質管理,客戶服務
++            """
++        if my_model:
++            result=await self.ask_ai(prompt,"auto-tagging",my_model=my_model)
++        else:
++            result=await self.ask_ai(prompt,"auto-tagging")
+         return result[0]
+     @trace
+     async def make_response(self,question,background,relevant,topn=10):
+@@ -126,10 +140,9 @@ class AI():
+                 
+         注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！格式錯誤會導致系統失敗，請務必遵守格式要求！
+         """
+-        by=self.user_stamp
+-        return await self.ask_ai(prompt,"chat",by)
++        return await self.ask_ai(prompt,"chat")
+     @trace
 -    async def ask_ai(self,prompt,type,by):
--        if type not in ['chat','auto-tagging','suggesting']:
--            raise BadInputError("ai record type error")
--        
--        resp = await self.agent.responses.create(
++    async def ask_ai(self,prompt,type,my_model="gpt-5-nano-2025-08-07"):
+         by=self.user_stamp
+         message=f"""
+ 你是我們公司最專業的人工智慧助手，請確保回覆具備專業性、可靠性與準確度。
+@@ -143,7 +156,7 @@ class AI():
+         import time
+         start_time = time.time()
+         resp = await self.agent.responses.create(
 -            model="gpt-5-nano-2025-08-07",
--            # gpt-5-nano-2025-08-07
--            input=prompt,
--        )
--        await self.create_record(type,RecordCreate(
--            ask=prompt,
--            answer=resp.output_text,
--            user=by,
--            type=type
--        ))
--        return resp.output_text
++            model=my_model,
+             #40s
+         #gpt-4.1-2025-04-14
+             # gpt-5-nano-2025-08-07
+@@ -251,7 +264,8 @@ class AI():
+             ic("cleared")
+             raise AIError("Result count generated not expected!")
+     @trace
+-    async def embedding(self,content:str,by):
++    async def embedding(self,content:str):
++        by=self.user_stamp
+         start_time = time.time()
+         response = await self.agent.embeddings.create(
+             input=content,
+@@ -273,8 +287,7 @@ class AI():
+     #幫我實作
+     @trace
+     async def vector_search(self,content:str,main_categories:list[str],topn=10):
+-        by=self.user_stamp
+-        vector=await self.embedding(content,by)
++        vector=await self.embedding(content)
+         knowledges=await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(main_category=main_categories),True)
+         data=[]
+         for knowledge in knowledges:
+@@ -313,4 +326,12 @@ class AI():
+                 final_result = result_list[1]
+             ic(final_result)
+             return final_result
+-                
+\ No newline at end of file
++                
++                
++    @trace
++    async def generate_strategy(self):
++        pass
++    
++    @trace 
++    async def rewrite(self):
++        pass
+\ No newline at end of file
+diff --git a/models/knowledgeModel.py b/models/knowledgeModel.py
+index 37b5786..662a0db 100644
+--- a/models/knowledgeModel.py
++++ b/models/knowledgeModel.py
+@@ -7,7 +7,7 @@ from errors import SettingsError,BadInputError
+ from tools import _ensure_model,trace,auto_build_mongo_filter
+ from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
+ from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
+-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter,KnowledgeSchemeSolve,KnowledgeSchemeEdit
++from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter,KnowledgeSchemeSolve,KnowledgeSchemeEdit,AggrestionKnowledgeFilter
+ from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
+ from schemes.utilitySchemes import CustomHTTPException,ResponseModel
+ from schemes.settingsSchemes import SettingsUpdateScheme
+@@ -109,9 +109,13 @@ class KnowledgeBase():
+                 ic(setting['category'][i]['status'])
+         return await setting_obj.update_settings(setting)
+     @trace
+-    async def get_knowledge(self,filter:KnowledgeFilter,include_embedding=False)->list:
++    async def get_knowledge(self,filter:KnowledgeFilter| AggrestionKnowledgeFilter,include_embedding=False,mask={})->list:
++        ic(filter)
+         filter_dict = filter.model_dump(exclude_none=True,exclude_unset=True)
+         
++        
++        ic(filter_dict)
++        
+         mongo_filter = {
+             "company": self.company  # 強制篩選公司資料
+         }
+@@ -119,7 +123,13 @@ class KnowledgeBase():
+         if "id" in filter_dict:
+             try:
+                 ic('yes')
+-                mongo_filter["_id"]=ObjectId(filter_dict['id'])
++                if isinstance(filter_dict['id'],list):
++                    ids=[]
++                    for i in filter_dict['id']:
++                        ids.append(ObjectId(i))
++                    mongo_filter["_id"]={"$in":ids}
++                else:
++                    mongo_filter["_id"]=ObjectId(filter_dict['id'])
+             except:
+                 raise BadInputError("id format error")
+         
+@@ -159,6 +169,9 @@ class KnowledgeBase():
+         else:
+             cursor = self.knowledge.find(mongo_filter,projection={"embedding_example_question": 0}).skip(start_index)
+         
++        if mask:
++            cursor = self.knowledge.find(mongo_filter,projection=mask).skip(start_index)
++        
+         if 'limit' in filter_dict:
+             limit = filter_dict.get("limit",0)
+             if filter_dict['limit']:
+diff --git a/models/statisticsModel.py b/models/statisticsModel.py
+index 786c6d0..6320cc3 100644
+--- a/models/statisticsModel.py
++++ b/models/statisticsModel.py
+@@ -19,7 +19,9 @@ class Statistic():
+         return ic(await self.db.user.count_documents({'company':company_id}))
+     
+     @trace
+-    async def get_knowledge_count(self,company_id:str,filter:KnowledgeFilter):
++    async def get_knowledge_count(self,company_id:str,filter:KnowledgeFilter | dict):
++        if isinstance(filter,dict):
++            filter=_ensure_model(filter,KnowledgeFilter)
+         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
+         filter_dict.update({'company':company_id})
+         processed_filter= auto_build_mongo_filter(KnowledgeFilter,filter_dict)
+@@ -52,14 +54,18 @@ class Statistic():
+         return ic(await self.db.user.count_documents(processed_filter))
+     
+     @trace
+-    async def count_knowledge_history(self,company_id:str,filter:KnowledgeHistoryFilter):
++    async def count_knowledge_history(self,company_id:str,filter:KnowledgeHistoryFilter|dict,limit=None):
++        if isinstance(filter,dict):
++            filter=_ensure_model(filter,KnowledgeHistoryFilter)
++            
+         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
+         processed_filter= auto_build_mongo_filter(KnowledgeHistoryFilter,filter_dict)
++        ic(processed_filter)
+         processed_filter.update({'company':company_id})
+         pipeline = [
+             {
+                 "$match": {**processed_filter,
+-             "linked_knowledge_id": {"$nin": [None, "-1", ""]}
++                "linked_knowledge_id": {"$nin": [None, "-1", ""]}
+             }},
+             {"$group": {
+                 "_id": "$linked_knowledge_id",     # 根據 linked_knowledge_id 分組
+@@ -67,10 +73,49 @@ class Statistic():
+             }},
+             {"$sort": {"count": -1}}               # 出現次數多的在前面
+         ]
 -
--
--class Statistic():
--    def __init__(self,request:Request):
--        self.db = request.app.state.db
--        self.collection = self.db.companies
--        self.request=request
--        
--    async def get_company_employee_count(self,company_id:str):
--        return ic(await self.db.user.count_documents({'company':company_id}))
--    
--    async def get_knowledge_count(self,company_id:str,filter:dict={}):
--        search_filter={'company':company_id}
--        search_filter.update(filter)
--        return ic(await self.db.knowledge.count_documents(search_filter))
++        
++        if limit:
++            pipeline.append({"$limit":limit})
+         ic(pipeline)
++        
+         result = await self.db.chat_history.aggregate(pipeline).to_list(length=None)
+-        return result
++        processed_result={}
++        for i in result:
++            processed_result[i['_id']]=i['count']
++        return processed_result
+     
++    @trace
++    async def count_maincategory_history(self,company_id:str,filter:KnowledgeHistoryFilter|dict,limit=None):
++        if isinstance(filter,dict):
++            filter=_ensure_model(filter,KnowledgeHistoryFilter)
++            
++        filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
++        processed_filter= auto_build_mongo_filter(KnowledgeHistoryFilter,filter_dict)
++        processed_filter.update({'company':company_id})
++        pipeline = [
++            {
++                "$match": {**processed_filter,
++                "main_category": {"$nin": [None, "-1", ""]}
++            }},
++            {"$group": {
++                "_id": "$main_category",     # 分組
++                "count": {"$sum": 1}
++            }},
++            {"$sort": {"count": -1}}               # 出現次數多的在前面
++        ]
++
++        if limit:
++            pipeline.append({"$limit":limit})
++            
++        ic(pipeline)
++        result = await self.db.chat_history.aggregate(pipeline).to_list()
++        # for i in result[0]:
++        #     i['main_category']=i["_id"]
++        #     ]
++        ic(result)
++        processed_result={}
++        for i in result:
++            processed_result[i['_id']]=i['count']
++        return processed_result
+     
+     
+\ No newline at end of file
+diff --git a/readme.md b/readme.md
+index e60b6bc..c4501e2 100644
+--- a/readme.md
++++ b/readme.md
+@@ -314,4 +314,7 @@ curl -X GET http://localhost:8000/checkauth \
+     "人力資源": ["總部","人力資源部"],
+     "數據安全與治理": ["總部"]
+   }
+-```
+\ No newline at end of file
++```
++
++### Traced Report 
++python trace_report.py
 \ No newline at end of file
 diff --git a/schemes/aiSchemes.py b/schemes/aiSchemes.py
-index 036aaae..d216683 100644
+index 02c4a6f..acc8b25 100644
 --- a/schemes/aiSchemes.py
 +++ b/schemes/aiSchemes.py
-@@ -10,9 +10,11 @@ class RecordCreate(BaseModel):
-     ask: str
-     answer: str
-     user: str
-+    company:str
+@@ -16,7 +16,7 @@ class RecordCreate(BaseModel):
+     main_category:Optional[str]=None
+     sub_category:Optional[str]=None
      status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
-     type:Literal['chat','auto-tagging','suggesting']
+-    type:Literal['chat','auto-tagging','suggesting','embedding']
++    type:Literal['chat','auto-tagging','suggesting','embedding','rewrite']
      reponse:QuestionReponse=""
-+    elapse_time:str=""
-     # Store as timezone-aware UTC datetime; auto-fill on creation
-     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-     model_config = ConfigDict(revalidate_instances='always')
+     linked_knowledge_id:str="-1"
+     elapse_time:str=""
+@@ -32,7 +32,7 @@ class RecordEdit(BaseModel):
+     department:Optional[list[str]]=None
+     main_category:Optional[str]=None
+     sub_category:Optional[str]=None
+-    type:Literal['chat','auto-tagging','suggesting']=""
++    type:Literal['chat','auto-tagging','suggesting','embedding','rewrite']=""
+     status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
+     reponse:QuestionReponse=""
+     linked_knowledge_id:str=None
+@@ -47,9 +47,23 @@ class KnowledgeHistoryFilter(BaseFilter):
+     ask: str =None
+     answer: str =None
+     user: str=None
+-    type:Literal['chat','auto-tagging','suggesting']
++    department:Optional[list[str]]=None
++    main_category:Optional[list[str]]=None
++    sub_category:Optional[list[str]]=None
++    type:Literal['chat','auto-tagging','suggesting','embedding','rewrite']="chat"
+     status:Literal['normal','suggest-solved','suggest-unsolved']=None
+     reponse:QuestionReponse=None
+     linked_knowledge_id:str=None
+ 
+-    
++# class MaincategoryHistoryFilter(BaseFilter):
++#     id: Optional[str] = Field(None, alias="_id")
++#     ask: str =None
++#     answer: str =None
++#     user: str=None
++#     department:Optional[list[str]]=None
++#     main_category:Optional[str]
++#     sub_category:Optional[str]=None
++#     type:Literal['chat','auto-tagging','suggesting']="chat"
++#     status:Literal['normal','suggest-solved','suggest-unsolved']=None
++#     reponse:QuestionReponse=None
++#     linked_knowledge_id:str=None
+\ No newline at end of file
 diff --git a/schemes/knowledgeBaseSchemes.py b/schemes/knowledgeBaseSchemes.py
-index 679bfb2..734ce34 100644
+index a1a669d..a2c130d 100644
 --- a/schemes/knowledgeBaseSchemes.py
 +++ b/schemes/knowledgeBaseSchemes.py
-@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
- 
- class KnowledgeSchemeCreate(BaseModel):
-     _id:str
-+    company:str
-     department:list[str]=[]
-     keywords:list[str]=[]
-     tag:list[str] =[]
-@@ -74,3 +75,20 @@ class MainCategoriesUpdateScheme(BaseModel): # useing for reset the data
-     financial_management: Optional[MainCategoryConfig] = Field(None, validation_alias="財務管理", serialization_alias="財務管理"    )
-     human_resources: Optional[MainCategoryConfig] = Field(None, validation_alias="人力資源", serialization_alias="人力資源"    )
-     data_security_and_governance: Optional[MainCategoryConfig] = Field(None, validation_alias="數據安全與治理", serialization_alias="數據安全與治理"    )
-+
-+class SubCategoryAdd(BaseModel):
-+    main_category:str
-+    sub_category:str
-+    
-+class KnowledgeFilter(BaseModel):
-+    main_category: Optional[str] = None
-+    sub_category: Optional[str] = None
-+    department: Optional[list[str]] = None
-+    created_by: Optional[str] = None
-+    keywords: Optional[str] = None
-+    start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
-+    end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
+@@ -142,3 +142,15 @@ class KnowledgeFilter(BaseFilter):
+     content:Optional[str]=None
+     status:Optional[Literal['solved','unsolved']]=None
+     
++class AggrestionKnowledgeFilter(BaseFilter):
++    id: Optional[list[str]] = Field(None, alias="_id") # _id開頭會被忽略
++    main_categorys: Optional[list[str]] = None
++    sub_categorys: Optional[list[str]] = None
++    departments: Optional[list[str]] = None
++    created_by: Optional[list[str]] = None
++    keywords: Optional[list[str]] = None
++    # start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
++    # end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
 +    sort:Optional[str]=None
 +    content:Optional[str]=None
-+    limit:Optional[int]=None
-+    satrt_index:Optional[int]=None
++    status:Optional[Literal['solved','unsolved']]=None
 \ No newline at end of file
-diff --git a/schemes/userSchemes.py b/schemes/userSchemes.py
-index 45fec8c..06cb922 100644
---- a/schemes/userSchemes.py
-+++ b/schemes/userSchemes.py
-@@ -1,6 +1,8 @@
--from pydantic import BaseModel,EmailStr
-+from pydantic import BaseModel,EmailStr,Field
- from typing import Literal,Optional
+diff --git a/tools.py b/tools.py
+index c48da48..613644b 100644
+--- a/tools.py
++++ b/tools.py
+@@ -59,8 +59,9 @@ def auto_build_mongo_filter(
+         args = get_args(annotation)
  
-+
-+
- class UserRegisterScheme(BaseModel):
-     username:EmailStr # account=email
-     password:str
-@@ -11,7 +13,7 @@ class UserRegisterScheme(BaseModel):
-     role:Optional[str]="" # 角色 
-     token:Optional[str]=None # permittion to create a admin account
-     note:Optional[str]=""
--    department:Optional[list[str]] = list
-+    department:Optional[list[str]] = Field(default_factory=list)
-     
- class UserRegisterPasswordPresetScheme(BaseModel):
-     username:EmailStr # account=email
+         # 處理 List 型別欄位
+-        if origin == list:
++        if isinstance(value, list):
+             mongo_filter[field_name] = {"$in": value}
++            continue
+ 
+         # 處理 Optional[...] -> 取內部型別
+         elif origin == Union and type(None) in args:
+@@ -68,7 +69,7 @@ def auto_build_mongo_filter(
+             for i in args:
+                 if i is type(None):
+                     continue
+-                elif i==list:
++                elif get_origin(i) == list:
+                     mongo_filter[field_name] = {"$in": value}
+                 elif i == str and field_name in fuzzy_fields:
+                         mongo_filter[field_name] = {"$regex": value, "$options": "i"}

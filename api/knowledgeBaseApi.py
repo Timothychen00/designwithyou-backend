@@ -4,7 +4,7 @@ from icecream import ic
 
 from schemes.aiSchemes import KnowledgeHistoryFilter
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.knowledgeModel import KnowledgeBase
 from models.companyModel import Company
@@ -83,7 +83,7 @@ async def get_knowledge(request:Request,user_session=Depends(login_required(auth
 
 @trace
 @router.post("/api/knowledge_base/knowledge/filter")
-async def get_filtered_knowledge(request:Request,data_filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
+async def get_filtered_knowledge(request:Request,data_filter:AggrestionKnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
     """
 
     """

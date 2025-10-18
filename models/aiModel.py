@@ -58,38 +58,52 @@ class AI():
         ic(ObjectId(id))
         return await self.collection.update_one({"_id":ObjectId(id)},{"$set":data_dict})
     @trace
-    async def suggesting(self,prompt,by,instructions=""):
-        result=await self.ask_ai(instructions+prompt,"suggesting",by)
+    async def suggesting(self,prompt,instructions=""):
+        result=await self.ask_ai(instructions+prompt,"suggesting")
         return result[0]
     @trace
-    async def chat(self,prompt,by,instructions=""):
-        result= await self.ask_ai(instructions+prompt,"chat",by)
+    async def chat(self,prompt,instructions=""):
+        result= await self.ask_ai(instructions+prompt,"chat")
         return result [0]
     @trace
-    async def auto_tagging(self,categories:list[str],data,by,extend:bool=False,count=1,instructions=""):
+    async def auto_tagging(self,categories:list[str],data,extend:bool=False,count=1,instructions="",my_model="",summary_tag=False):
         extend_bool={True:"允許",False:"不允許"}[extend]
         
-        prompt = f"""
-        請你幫我針對以下的內容進行分類：
+        if summary_tag:
+            prompt = f"""
+        請你幫我針對以下的內容進行摘要，精煉出幾個具有代表性，能夠反映出這些知識條目的特性和問題並且適合公司決策者看的標籤，並且可以使用流行用語，活潑一點，最好能夠體現你從這些內容中看到了什麼現象：
         目前所有的分類：{categories}。
         需要進行分類的內容：{data}。
         是否允許創建新的分類：{extend_bool}
         請幫我思考目標內容與現有分類的關係，然後從中挑選{count}個最合適的分類進行回覆。
+        
         注意：回覆的時候直接回覆那個分類名稱即可，不要有任何多餘的文字和標點符號！
-
-        以下是範例：
-        ——————————————————
-        目前所有的分類：["品質管理","倉儲管理","生產管理","客戶服務","採購管理","設備維護","能源管理","物流與配送","研發與創新","財務管理","人力資源","數據安全與治理"]。
-        需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
-        挑選分類數：1
-        你的回應：品質管理
-        ——————————————————
-        目前所有的分類：["品質管理","倉儲管理","生產管理","客戶服務","採購管理","設備維護","能源管理","物流與配送","研發與創新","財務管理","人力資源","數據安全與治理"]。
-        需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
-        挑選分類數：2
-        你的回應：品質管理,客戶服務
         """
-        result=await self.ask_ai(prompt,"auto-tagging",by)
+        else:
+            prompt = f"""
+            請你幫我針對以下的內容進行分類：
+            目前所有的分類：{categories}。
+            需要進行分類的內容：{data}。
+            是否允許創建新的分類：{extend_bool}
+            請幫我思考目標內容與現有分類的關係，然後從中挑選{count}個最合適的分類進行回覆。
+            注意：回覆的時候直接回覆那個分類名稱即可，不要有任何多餘的文字和標點符號！
+
+            以下是範例：
+            ——————————————————
+            目前所有的分類：["品質管理","倉儲管理","生產管理","客戶服務","採購管理","設備維護","能源管理","物流與配送","研發與創新","財務管理","人力資源","數據安全與治理"]。
+            需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
+            挑選分類數：1
+            你的回應：品質管理
+            ——————————————————
+            目前所有的分類：["品質管理","倉儲管理","生產管理","客戶服務","採購管理","設備維護","能源管理","物流與配送","研發與創新","財務管理","人力資源","數據安全與治理"]。
+            需要進行分類的內容：今天賣出去的商品客戶反應有問題欸要怎麼處理。
+            挑選分類數：2
+            你的回應：品質管理,客戶服務
+            """
+        if my_model:
+            result=await self.ask_ai(prompt,"auto-tagging",my_model=my_model)
+        else:
+            result=await self.ask_ai(prompt,"auto-tagging")
         return result[0]
     @trace
     async def make_response(self,question,background,relevant,topn=10):
@@ -126,10 +140,9 @@ class AI():
                 
         注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！格式錯誤會導致系統失敗，請務必遵守格式要求！
         """
-        by=self.user_stamp
-        return await self.ask_ai(prompt,"chat",by)
+        return await self.ask_ai(prompt,"chat")
     @trace
-    async def ask_ai(self,prompt,type,by):
+    async def ask_ai(self,prompt,type,my_model="gpt-5-nano-2025-08-07"):
         by=self.user_stamp
         message=f"""
 你是我們公司最專業的人工智慧助手，請確保回覆具備專業性、可靠性與準確度。
@@ -143,7 +156,7 @@ class AI():
         import time
         start_time = time.time()
         resp = await self.agent.responses.create(
-            model="gpt-5-nano-2025-08-07",
+            model=my_model,
             #40s
         #gpt-4.1-2025-04-14
             # gpt-5-nano-2025-08-07
@@ -251,7 +264,8 @@ class AI():
             ic("cleared")
             raise AIError("Result count generated not expected!")
     @trace
-    async def embedding(self,content:str,by):
+    async def embedding(self,content:str):
+        by=self.user_stamp
         start_time = time.time()
         response = await self.agent.embeddings.create(
             input=content,
@@ -273,8 +287,7 @@ class AI():
     #幫我實作
     @trace
     async def vector_search(self,content:str,main_categories:list[str],topn=10):
-        by=self.user_stamp
-        vector=await self.embedding(content,by)
+        vector=await self.embedding(content)
         knowledges=await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(main_category=main_categories),True)
         data=[]
         for knowledge in knowledges:
@@ -314,3 +327,11 @@ class AI():
             ic(final_result)
             return final_result
                 
+                
+    @trace
+    async def generate_strategy(self):
+        pass
+    
+    @trace 
+    async def rewrite(self):
+        pass

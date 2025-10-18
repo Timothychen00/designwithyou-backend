@@ -59,8 +59,9 @@ def auto_build_mongo_filter(
         args = get_args(annotation)
 
         # 處理 List 型別欄位
-        if origin == list:
+        if isinstance(value, list):
             mongo_filter[field_name] = {"$in": value}
+            continue
 
         # 處理 Optional[...] -> 取內部型別
         elif origin == Union and type(None) in args:
@@ -68,7 +69,7 @@ def auto_build_mongo_filter(
             for i in args:
                 if i is type(None):
                     continue
-                elif i==list:
+                elif get_origin(i) == list:
                     mongo_filter[field_name] = {"$in": value}
                 elif i == str and field_name in fuzzy_fields:
                         mongo_filter[field_name] = {"$regex": value, "$options": "i"}

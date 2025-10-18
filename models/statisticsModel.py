@@ -19,7 +19,9 @@ class Statistic():
         return ic(await self.db.user.count_documents({'company':company_id}))
     
     @trace
-    async def get_knowledge_count(self,company_id:str,filter:KnowledgeFilter):
+    async def get_knowledge_count(self,company_id:str,filter:KnowledgeFilter | dict):
+        if isinstance(filter,dict):
+            filter=_ensure_model(filter,KnowledgeFilter)
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
         filter_dict.update({'company':company_id})
         processed_filter= auto_build_mongo_filter(KnowledgeFilter,filter_dict)
@@ -52,14 +54,18 @@ class Statistic():
         return ic(await self.db.user.count_documents(processed_filter))
     
     @trace
-    async def count_knowledge_history(self,company_id:str,filter:KnowledgeHistoryFilter):
+    async def count_knowledge_history(self,company_id:str,filter:KnowledgeHistoryFilter|dict,limit=None):
+        if isinstance(filter,dict):
+            filter=_ensure_model(filter,KnowledgeHistoryFilter)
+            
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
         processed_filter= auto_build_mongo_filter(KnowledgeHistoryFilter,filter_dict)
+        ic(processed_filter)
         processed_filter.update({'company':company_id})
         pipeline = [
             {
                 "$match": {**processed_filter,
-             "linked_knowledge_id": {"$nin": [None, "-1", ""]}
+                "linked_knowledge_id": {"$nin": [None, "-1", ""]}
             }},
             {"$group": {
                 "_id": "$linked_knowledge_id",     # 根據 linked_knowledge_id 分組
@@ -67,10 +73,49 @@ class Statistic():
             }},
             {"$sort": {"count": -1}}               # 出現次數多的在前面
         ]
-
+        
+        if limit:
+            pipeline.append({"$limit":limit})
         ic(pipeline)
+        
         result = await self.db.chat_history.aggregate(pipeline).to_list(length=None)
-        return result
+        processed_result={}
+        for i in result:
+            processed_result[i['_id']]=i['count']
+        return processed_result
     
+    @trace
+    async def count_maincategory_history(self,company_id:str,filter:KnowledgeHistoryFilter|dict,limit=None):
+        if isinstance(filter,dict):
+            filter=_ensure_model(filter,KnowledgeHistoryFilter)
+            
+        filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
+        processed_filter= auto_build_mongo_filter(KnowledgeHistoryFilter,filter_dict)
+        processed_filter.update({'company':company_id})
+        pipeline = [
+            {
+                "$match": {**processed_filter,
+                "main_category": {"$nin": [None, "-1", ""]}
+            }},
+            {"$group": {
+                "_id": "$main_category",     # 分組
+                "count": {"$sum": 1}
+            }},
+            {"$sort": {"count": -1}}               # 出現次數多的在前面
+        ]
+
+        if limit:
+            pipeline.append({"$limit":limit})
+            
+        ic(pipeline)
+        result = await self.db.chat_history.aggregate(pipeline).to_list()
+        # for i in result[0]:
+        #     i['main_category']=i["_id"]
+        #     ]
+        ic(result)
+        processed_result={}
+        for i in result:
+            processed_result[i['_id']]=i['count']
+        return processed_result
     
     

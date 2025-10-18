@@ -7,7 +7,7 @@ from errors import SettingsError,BadInputError
 from tools import _ensure_model,trace,auto_build_mongo_filter
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter,KnowledgeSchemeSolve,KnowledgeSchemeEdit
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter,KnowledgeSchemeSolve,KnowledgeSchemeEdit,AggrestionKnowledgeFilter
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from schemes.settingsSchemes import SettingsUpdateScheme
@@ -109,8 +109,12 @@ class KnowledgeBase():
                 ic(setting['category'][i]['status'])
         return await setting_obj.update_settings(setting)
     @trace
-    async def get_knowledge(self,filter:KnowledgeFilter,include_embedding=False)->list:
+    async def get_knowledge(self,filter:KnowledgeFilter| AggrestionKnowledgeFilter,include_embedding=False,mask={})->list:
+        ic(filter)
         filter_dict = filter.model_dump(exclude_none=True,exclude_unset=True)
+        
+        
+        ic(filter_dict)
         
         mongo_filter = {
             "company": self.company  # 強制篩選公司資料
@@ -119,7 +123,13 @@ class KnowledgeBase():
         if "id" in filter_dict:
             try:
                 ic('yes')
-                mongo_filter["_id"]=ObjectId(filter_dict['id'])
+                if isinstance(filter_dict['id'],list):
+                    ids=[]
+                    for i in filter_dict['id']:
+                        ids.append(ObjectId(i))
+                    mongo_filter["_id"]={"$in":ids}
+                else:
+                    mongo_filter["_id"]=ObjectId(filter_dict['id'])
             except:
                 raise BadInputError("id format error")
         
@@ -158,6 +168,9 @@ class KnowledgeBase():
             cursor = self.knowledge.find(mongo_filter).skip(start_index)
         else:
             cursor = self.knowledge.find(mongo_filter,projection={"embedding_example_question": 0}).skip(start_index)
+        
+        if mask:
+            cursor = self.knowledge.find(mongo_filter,projection=mask).skip(start_index)
         
         if 'limit' in filter_dict:
             limit = filter_dict.get("limit",0)

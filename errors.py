@@ -1,6 +1,9 @@
 class ActionSuggestionError(Exception):
     pass
 
+class BusinessStrategyError(Exception):
+    pass
+
 class SettingsError(Exception):
     pass
 

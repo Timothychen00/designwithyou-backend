@@ -16,7 +16,7 @@ class RecordCreate(BaseModel):
     main_category:Optional[str]=None
     sub_category:Optional[str]=None
     status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
-    type:Literal['chat','auto-tagging','suggesting','embedding']
+    type:Literal['chat','auto-tagging','suggesting','embedding','rewrite']
     reponse:QuestionReponse=""
     linked_knowledge_id:str="-1"
     elapse_time:str=""
@@ -32,7 +32,7 @@ class RecordEdit(BaseModel):
     department:Optional[list[str]]=None
     main_category:Optional[str]=None
     sub_category:Optional[str]=None
-    type:Literal['chat','auto-tagging','suggesting']=""
+    type:Literal['chat','auto-tagging','suggesting','embedding','rewrite']=""
     status:Literal['normal','suggest-solved','suggest-unsolved']="normal"
     reponse:QuestionReponse=""
     linked_knowledge_id:str=None
@@ -47,9 +47,23 @@ class KnowledgeHistoryFilter(BaseFilter):
     ask: str =None
     answer: str =None
     user: str=None
-    type:Literal['chat','auto-tagging','suggesting']
+    department:Optional[list[str]]=None
+    main_category:Optional[list[str]]=None
+    sub_category:Optional[list[str]]=None
+    type:Literal['chat','auto-tagging','suggesting','embedding','rewrite']="chat"
     status:Literal['normal','suggest-solved','suggest-unsolved']=None
     reponse:QuestionReponse=None
     linked_knowledge_id:str=None
 
-    
+# class MaincategoryHistoryFilter(BaseFilter):
+#     id: Optional[str] = Field(None, alias="_id")
+#     ask: str =None
+#     answer: str =None
+#     user: str=None
+#     department:Optional[list[str]]=None
+#     main_category:Optional[str]
+#     sub_category:Optional[str]=None
+#     type:Literal['chat','auto-tagging','suggesting']="chat"
+#     status:Literal['normal','suggest-solved','suggest-unsolved']=None
+#     reponse:QuestionReponse=None
+#     linked_knowledge_id:str=None

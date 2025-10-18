@@ -142,3 +142,15 @@ class KnowledgeFilter(BaseFilter):
     content:Optional[str]=None
     status:Optional[Literal['solved','unsolved']]=None
     
+class AggrestionKnowledgeFilter(BaseFilter):
+    id: Optional[list[str]] = Field(None, alias="_id") # _id開頭會被忽略
+    main_categorys: Optional[list[str]] = None
+    sub_categorys: Optional[list[str]] = None
+    departments: Optional[list[str]] = None
+    created_by: Optional[list[str]] = None
+    keywords: Optional[list[str]] = None
+    # start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
+    # end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
+    sort:Optional[str]=None
+    content:Optional[str]=None
+    status:Optional[Literal['solved','unsolved']]=None
