@@ -1,5 +1,5 @@
 from pydantic import BaseModel,EmailStr,Field,field_serializer,ConfigDict, ValidationError
-from typing import Literal,Optional
+from typing import Literal,Optional,Union
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from .utilitySchemes import BaseFilter
@@ -42,15 +42,15 @@ class ActionSuggestionEdit(BaseModel):
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None
 
 class ActionSuggestionFilter(BaseFilter):
-    id: Optional[str] = Field(None, alias="_id")
+    id: Optional[list[str]] = Field(None, alias="_id")
     title:Optional[str]=None
-    recommand_priority:Optional[tuple[int,str]]=None
-    expect_outcome:Optional[str]=None
+    # recommand_priority:Optional[tuple[int,str]]=None
+    # expect_outcome:Optional[str]=None
     content:Optional[str]=None
     company:str=None
     request_time: Optional[datetime] = None
     assignee:Optional[str]=None
-    records:list[ActionContactRecord]=None
+    # records:list[ActionContactRecord]=None
     closed_timestamp:datetime =None
     inprogress_timestamp: datetime=None
     status:Optional[Literal['created','adopted','unadopted','inprogress','closed']]=None

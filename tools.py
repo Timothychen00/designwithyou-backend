@@ -95,8 +95,17 @@ def auto_build_mongo_filter(
 
     if 'id' in filter_data:
         try:
-            value=ObjectId(filter_data['id'])
-            mongo_filter['_id']=value
+            if isinstance(filter_data['id'],list):
+                ids=[]
+                for i in filter_data['id']:
+                    ids.append(ObjectId(i))
+                mongo_filter["_id"]={"$in":ids}
+            else:
+                mongo_filter["_id"]=ObjectId(filter_data['id'])
+            
+
+                value=ObjectId(filter_data['id'])
+                mongo_filter['_id']=value
         except:
             raise BadInputError("id not in format")
             
