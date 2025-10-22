@@ -154,3 +154,14 @@ class AggrestionKnowledgeFilter(BaseFilter):
     sort:Optional[str]=None
     content:Optional[str]=None
     status:Optional[Literal['solved','unsolved']]=None
+    
+class GroupKnowledgeFilter(BaseModel):
+    id: bool = False
+    main_category: bool = False
+    sub_category: bool = False
+    department: bool = False
+    created_by: bool = False
+    keywords: bool = False
+    sort: bool = False
+    content: bool = False
+    status: bool = False

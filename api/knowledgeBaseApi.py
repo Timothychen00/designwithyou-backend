@@ -4,7 +4,7 @@ from icecream import ic
 
 from schemes.aiSchemes import KnowledgeHistoryFilter,KnowledgeHistoryGroup
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter,GroupKnowledgeFilter
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.knowledgeModel import KnowledgeBase
 from models.companyModel import Company
@@ -296,6 +296,21 @@ async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,us
         
     result = await svc.get_knowledge_count(company_id,filter)
     return ResponseModel(message="ok", data=result)
+
+@trace
+@router.post('/api/knowledge_base/knowledge_count/group',tags=['Statistics'])
+async def group_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,group:GroupKnowledgeFilter,user_session=Depends(login_required(authority="admin"))):
+    """
+    """
+    svc = Statistic(request)
+    company_id=user_session["company"]
+    if not filter:
+        filter={}
+    ic(group)
+    result = await svc.group_knowledge_count(company_id,filter,group)
+    return ResponseModel(message="ok", data=result)
+
+
 # maincategory
 @trace
 @router.get('/api/knowledge_base/maincategory')
