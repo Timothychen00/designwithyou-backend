@@ -1,8 +1,9 @@
 from fastapi import APIRouter,Request,Depends,Query
 from typing import Optional
 from icecream import ic
+import json 
 
-from schemes.aiSchemes import KnowledgeHistoryFilter,KnowledgeHistoryGroup
+from schemes.aiSchemes import KnowledgeHistoryFilter,KnowledgeHistoryGroup,Background
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter,GroupKnowledgeFilter
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
@@ -477,4 +478,18 @@ async def knowledge_history_group(request:Request,filter:KnowledgeHistoryFilter,
         filter={}
         
     result = await svc.group_knowledge_history(company_id,filter,grouping=grouping)
+    return ResponseModel(message="ok", data=result)
+
+@trace
+@router.post('/api/ai/generate_keywords',tags=['AI'])
+async def generate_keywords(request:Request,background:Background,user_session=Depends(login_required(authority="admin"))):
+    readings=json.dumps(background.model_dump(exclude_none=True,exclude_unset=True))
+    tags=await AI(request).auto_tagging([],readings,extend=True,count=4,my_model="gpt-4.1-nano",summary_tag=True)
+    return ResponseModel(message="ok", data=tags)
+
+@trace
+@router.post('/api/ai/rewrite',tags=['AI'])
+async def generate_keywords(request:Request,background:Background,user_session=Depends(login_required(authority="admin"))):
+    readings=json.dumps(background.model_dump(exclude_none=True,exclude_unset=True))
+    result=await AI(request).rewrite(readings)
     return ResponseModel(message="ok", data=result)

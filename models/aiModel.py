@@ -11,6 +11,7 @@ from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,Compan
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from .userModel import User
+from .companyModel import Company
 from .knowledgeModel import KnowledgeBase
 from tools import trace
 
@@ -152,7 +153,7 @@ class AI():
         {prompt}
         """
         
-        if type not in ['chat','auto-tagging','suggesting']:
+        if type not in ['chat','auto-tagging','suggesting','embedding','rewrite']:
             raise BadInputError("ai record type error")
         
         import time
@@ -330,15 +331,29 @@ class AI():
                 final_result = result_list[1]
             ic(final_result)
             return final_result
-                
+
                 
     @trace
     async def generate_strategy(self):
         pass
     
     @trace 
-    async def rewrite(self):
-        pass
+    async def rewrite(self,background):
+        companydata= await Company(self.request).get_company(self.user_stamp['company'])
+        company_background= await self.generate_background_data(companydata)
+        prompt=f"""
+        幫我根據這些背景內容，針對這個問題的答案進行重寫：
+        背景內容：
+        公司內容：
+        {company_background}
+        當前知識條目：
+        {background}
+        
+        不要有任何沒有意義的問候和開頭，直接幫我重寫問題的答案
+        """
+        result=await self.ask_ai(prompt,"rewrite")
+        return result[0]
+
     
     @trace
     async def generate_insight(self,content,strategy_type,count=3):#洞見

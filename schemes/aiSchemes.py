@@ -74,3 +74,10 @@ class KnowledgeHistoryGroup(BaseModel):
 #     status:Literal['normal','suggest-solved','suggest-unsolved']=None
 #     reponse:QuestionReponse=None
 #     linked_knowledge_id:str=None
+
+class Background(BaseModel):
+    example_question:str
+    example_answer:str 
+    main_category:str 
+    sub_category:str 
+    
