@@ -3,6 +3,7 @@ from icecream import ic
 import json
 import time
 from bson import ObjectId
+from datetime import datetime, timezone
 
 from errors import SettingsError,BadInputError,ActionSuggestionError
 from tools import _ensure_model,cosine_similarity
@@ -10,7 +11,7 @@ from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
-from schemes.actionSuggestionSchemes import ActionSuggestionFilter,ActionSuggestionCreate,ActionSuggestionEdit
+from schemes.actionSuggestionSchemes import ActionSuggestionFilter,ActionSuggestionCreate,ActionSuggestionEdit,ActionSuggestionReply
 from .userModel import User
 from tools import auto_build_mongo_filter
 from .knowledgeModel import KnowledgeBase
@@ -62,12 +63,12 @@ class ActionSuggestion():
         return str(result.inserted_id)
     
     @trace
-    async def edit_action_suggestion(self,data_filter:ActionSuggestionFilter,data:ActionSuggestionEdit | dict):
-        if isinstance(data,dict):
-            data_filter=_ensure_model(data,ActionSuggestionEdit)
+    async def edit_action_suggestion(self,data_filter:ActionSuggestionFilter|dict,data:ActionSuggestionEdit | dict):
+        if isinstance(data_filter,dict):
+            data_filter=_ensure_model(data,ActionSuggestionFilter)
         data_filter.company=self.company
 
-        result = await self.collection.update_one(data_filter,data)
+        result = await self.collection.update_one(data_filter,{"$set":data.model_dump(exclude_defaults=True,exclude_unset=True)})
         return {"matched":result.matched_count,"modified":result.modified_count}
             
     
@@ -77,3 +78,44 @@ class ActionSuggestion():
         processed_filter['company']=self.company
         result = await self.collection.delete_many(processed_filter)
         return {"deleted_count": result.deleted_count}
+
+    @trace 
+    async def reply(self,filter:ActionSuggestionFilter,user_content:str):
+        result=await self.get_action_suggestion(filter)
+        records=result['records']
+        temp_record = ActionSuggestionReply(
+            user=self.user_stamp['username'],
+            authority=self.user_stamp['authority'],
+            content=user_content
+        )
+        
+        if not records:
+            records=[] 
+        
+        if result['status']!='adopted' and result['status']!='inprogress':
+            raise BadInputError("action status is not adopted!")
+
+        updated_dict={}
+        updated_dict['records'] = records
+        updated_dict['records'].append(temp_record.model_dump())
+        if self.user_stamp['authority']=='admin':
+            updated_dict['status']='inprogress'
+
+        reply_result = await self.edit_action_suggestion(filter,updated_dict)
+        ic(reply_result)
+        return reply_result 
+    
+    @trace
+    async def close(self,filter:ActionSuggestionFilter):
+        updated_dict={}
+        updated_dict['closed_timestamp']=datetime.now(timezone.utc)
+        updated_dict['status']='closed'
+        reply_result = await self.edit_action_suggestion(filter,updated_dict)
+        ic(reply_result)
+        return reply_result 
+# {
+#     "datetime":datetime
+#     "user":str
+#     "authority":str
+#     "content":str
+# }

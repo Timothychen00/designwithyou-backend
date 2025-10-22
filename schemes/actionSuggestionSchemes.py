@@ -17,12 +17,14 @@ class ActionSuggestionCreate(BaseModel):
     expect_outcome:str
     content:str
     company:str=""
-    status:Literal['created','adopted','unadopted','inprogress','done']="created"
+    status:Literal['created','adopted','unadopted','inprogress','closed']="created"
     type:Literal['Operational',"Strategy",'Innovation']    
     assignee:str=""
     records:list[ActionContactRecord]=[]
+    closed_timestamp:datetime =""
     inprogress_timestamp: datetime =""# 要完成的時間
     deadline_time_stamp:datetime=""
+    
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ActionSuggestionEdit(BaseModel):
@@ -33,8 +35,9 @@ class ActionSuggestionEdit(BaseModel):
     request_time: Optional[datetime] = None
     assignee:Optional[str]=None
     records:list[ActionContactRecord]=None
+    closed_timestamp:datetime =None
     inprogress_timestamp: datetime=None
-    status:Optional[Literal['created','adopted','unadopted','inprogress','done']]=None
+    status:Optional[Literal['created','adopted','unadopted','inprogress','closed']]=None
     deadline_time_stamp:datetime=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None
 
@@ -48,7 +51,14 @@ class ActionSuggestionFilter(BaseFilter):
     request_time: Optional[datetime] = None
     assignee:Optional[str]=None
     records:list[ActionContactRecord]=None
+    closed_timestamp:datetime =None
     inprogress_timestamp: datetime=None
-    status:Optional[Literal['created','adopted','unadopted','inprogress','done']]=None
+    status:Optional[Literal['created','adopted','unadopted','inprogress','closed']]=None
     deadline_time_stamp:datetime=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None
+
+class ActionSuggestionReply(BaseModel):
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    username:str
+    authority:str
+    content:str

@@ -37,3 +37,13 @@ async def delete_action_suggestion(request:Request,data_filter:ActionSuggestionF
     return ResponseModel(message="ok",data = result)
 
 # advanced
+@router.post('/api/action_suggestion/reply')
+async def reply(request:Request,data_filter:ActionSuggestionFilter,content:str,user_session=Depends(login_required(authority="admin"))):
+    result = await ActionSuggestion(request).reply(data_filter,content)
+    return ResponseModel(message="ok",data = result)
+
+#結案
+@router.post('/api/action_suggestion/close')
+async def close(request:Request,data_filter:ActionSuggestionFilter,user_session=Depends(login_required(authority="owner"))):
+    result = await ActionSuggestion(request).close(data_filter)
+    return ResponseModel(message="ok",data = result)
