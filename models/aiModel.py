@@ -107,6 +107,7 @@ class AI():
             result=await self.ask_ai(prompt,"auto-tagging")
         return result[0]
     @trace
+
     async def make_response(self,question,background,relevant,topn=10):
         prompt = f"""
         【任務說明】
@@ -141,9 +142,9 @@ class AI():
                 
         注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！格式錯誤會導致系統失敗，請務必遵守格式要求！
         """
-        return await self.ask_ai(prompt,"chat")
+        return await self.ask_ai(prompt,"chat",ask=question)
     @trace
-    async def ask_ai(self,prompt,type,my_model="gpt-5-nano-2025-08-07"):
+    async def ask_ai(self,prompt,type,my_model="gpt-5-nano-2025-08-07",ask=""):
         by=self.user_stamp
         message=f"""
 你是我們公司最專業的人工智慧助手，請確保回覆具備專業性、可靠性與準確度。
@@ -166,7 +167,8 @@ class AI():
         end_time = time.time()  
         elapsed_seconds = end_time - start_time
         temp_record=RecordCreate(
-            ask=message,
+            prompt=message,
+            ask=ask,
             answer=resp.output_text,
             user=by['username'],
             type=type,
@@ -277,6 +279,7 @@ class AI():
         data=response.data[0].embedding
         ic(len(data))
         temp_record=RecordCreate(
+            prompt="",
             ask="",
             answer=str(data),
             user=by['username'],

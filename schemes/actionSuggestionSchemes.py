@@ -56,6 +56,10 @@ class ActionSuggestionFilter(BaseFilter):
     status:Optional[Literal['created','adopted','unadopted','inprogress','closed']]=None
     deadline_time_stamp:datetime=None
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None
+    
+class ActionSuggestionAdopt(BaseModel):
+    deadline_time_stamp:datetime
+    
 
 class ActionSuggestionReply(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

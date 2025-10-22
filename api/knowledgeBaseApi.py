@@ -2,7 +2,7 @@ from fastapi import APIRouter,Request,Depends,Query
 from typing import Optional
 from icecream import ic
 
-from schemes.aiSchemes import KnowledgeHistoryFilter
+from schemes.aiSchemes import KnowledgeHistoryFilter,KnowledgeHistoryGroup
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
@@ -11,6 +11,7 @@ from models.companyModel import Company
 from models.userModel import User
 from models.statisticsModel import Statistic
 from models.aiModel import AI
+from models.knowledgeHistoryModel import KnowledgeHistory
 from models.settingsModel import Settings
 from errors import BadInputError,StatusError,AIError
 from auth import login_required
@@ -408,9 +409,37 @@ async def embedding(request:Request,data:str,user_session=Depends(login_required
     result = await AI(request).embedding(data,user_session)
     return ResponseModel(message="ok", data=result)
 
+
+@trace
+@router.post('/api/knowledge_history/filter',tags=['Statistics'])
+async def knowledge_history_filter(request:Request,filter:KnowledgeHistoryFilter,user_session=Depends(login_required(authority="admin"))):
+    """
+    """
+    svc = KnowledgeHistory(request)
+    if not filter:
+        filter={}
+        
+    result = await svc.get_knowledge_history(filter)
+    return ResponseModel(message="ok", data=result)
+
+# @trace
+# @router.post('/api/knowledge_history/group',tags=['Statistics'])
+# async def knowledge_history_group(request:Request,filter:KnowledgeHistoryFilter,grouping:KnowledgeHistoryGroup,user_session=Depends(login_required(authority="admin"))):
+#     """
+#     group不同構面的knowledg搜尋次數
+#     """
+#     svc = Statistic(request)
+#     company_id=user_session["company"]
+#     if not filter:
+#         filter={}
+        
+#     result = await svc.group_knowledge_history(company_id,filter,grouping=grouping)
+#     return ResponseModel(message="ok", data=result)
+
+
 @trace
 @router.post('/api/knowledge_history/knowledge_hotness/filter',tags=['Statistics'])
-async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,user_session=Depends(login_required(authority="admin"))):
+async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,grouping:KnowledgeHistoryGroup,user_session=Depends(login_required(authority="admin"))):
     """
     """
     svc = Statistic(request)
@@ -418,5 +447,19 @@ async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,user_s
     if not filter:
         filter={}
         
-    result = await svc.count_knowledge_history(company_id,filter)
+    result = await svc.count_knowledge_history(company_id,filter,grouping=grouping)
+    return ResponseModel(message="ok", data=result)
+
+@trace
+@router.post('/api/knowledge_history/knowledge_hotness/group',tags=['Statistics'])
+async def knowledge_history_group(request:Request,filter:KnowledgeHistoryFilter,grouping:KnowledgeHistoryGroup,user_session=Depends(login_required(authority="admin"))):
+    """
+    group不同構面的knowledg搜尋次數
+    """
+    svc = Statistic(request)
+    company_id=user_session["company"]
+    if not filter:
+        filter={}
+        
+    result = await svc.group_knowledge_history(company_id,filter,grouping=grouping)
     return ResponseModel(message="ok", data=result)

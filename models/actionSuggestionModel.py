@@ -113,7 +113,18 @@ class ActionSuggestion():
         reply_result = await self.edit_action_suggestion(filter,updated_dict)
         ic(reply_result)
         return reply_result 
+    
+    @trace
+    async def adopt(self,data_filter:ActionSuggestionFilter,deadline:datetime):
+        result = await self.edit_business_strategy(data_filter,{"status":"adopted","deadline_time_stamp":deadline})
+        return result
+    
+    @trace
+    async def unadopt(self,data_filter:ActionSuggestionFilter):
+        result = await self.edit_business_strategy(data_filter,{"status":"unadopted"})
+        return result
 # {
+    
 #     "datetime":datetime
 #     "user":str
 #     "authority":str

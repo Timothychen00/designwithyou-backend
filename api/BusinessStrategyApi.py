@@ -44,3 +44,13 @@ async def delete_business_strategy(request:Request,data_filter:BusinessStrategyF
 async def generate(request:Request,data_filter:Literal['Operational',"Strategy",'Innovation'],user_session=Depends(login_required(authority="admin"))):
     result = await BusinessStrategy(request).generate_ai_strategy(data_filter)
     return ResponseModel(message="ok",data = result)
+
+@router.post('/api/business_strategy/adopt')
+async def adopt(request:Request,data_filter:Literal['Operational',"Strategy",'Innovation'],user_session=Depends(login_required(authority="admin"))):
+    result = await BusinessStrategy(request).adopt(data_filter)
+    return ResponseModel(message="ok",data = result)
+
+@router.post('/api/business_strategy/unadopt')
+async def unadopt(request:Request,data_filter:Literal['Operational',"Strategy",'Innovation'],user_session=Depends(login_required(authority="admin"))):
+    result = await BusinessStrategy(request).unadopt(data_filter)
+    return ResponseModel(message="ok",data = result)

@@ -30,7 +30,7 @@ class BusinessStrategyEdit(BaseModel):
     action_suggestion_id:list[str]=None
     timestamp: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class BusinessStrategyFilter():
+class BusinessStrategyFilter(BaseModel):
     id: Optional[str] = Field(None, alias="_id")
     department:Optional[list[str]]=None
     tags:Optional[list[str]]=None

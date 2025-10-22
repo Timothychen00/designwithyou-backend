@@ -6,6 +6,7 @@ from models.companyModel import Company
 from models.actionSuggestionModel import ActionSuggestion
 from schemes.actionSuggestionSchemes import ActionSuggestionCreate,ActionSuggestionEdit,ActionSuggestionFilter
 from auth import login_required
+from datetime import datetime
 
 router = APIRouter( tags=['ActionSuggestion'])
 
@@ -46,4 +47,16 @@ async def reply(request:Request,data_filter:ActionSuggestionFilter,content:str,u
 @router.post('/api/action_suggestion/close')
 async def close(request:Request,data_filter:ActionSuggestionFilter,user_session=Depends(login_required(authority="owner"))):
     result = await ActionSuggestion(request).close(data_filter)
+    return ResponseModel(message="ok",data = result)
+
+#結案
+@router.post('/api/action_suggestion/adopt')
+async def adopt(request:Request,data_filter:ActionSuggestionFilter,deadline:datetime,user_session=Depends(login_required(authority="owner"))):
+    result = await ActionSuggestion(request).adopt(data_filter)
+    
+    return ResponseModel(message="ok",data = result)
+
+@router.post('/api/action_suggestion/unadopt')
+async def unadopt(request:Request,data_filter:ActionSuggestionFilter,user_session=Depends(login_required(authority="owner"))):
+    result = await ActionSuggestion(request).unadopt(data_filter)
     return ResponseModel(message="ok",data = result)

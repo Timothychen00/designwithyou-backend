@@ -195,7 +195,3 @@ class BusinessStrategy():
             if len(target_categorys)==1:
                 target_categorys=target_categorys[0]
             return target_categorys,target_docs
-            
-    
-    
-    

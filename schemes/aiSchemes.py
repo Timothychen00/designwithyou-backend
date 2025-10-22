@@ -9,6 +9,7 @@ class  QuestionReponse(BaseModel):
 
 class RecordCreate(BaseModel):
     ask: str
+    prompt:str=None
     answer: str
     user: str
     company:str=""
@@ -26,6 +27,7 @@ class RecordCreate(BaseModel):
     
 class RecordEdit(BaseModel):
     ask: str =""
+    prompt:str=None
     answer: str =""
     user: str=""
     company:str=""
@@ -45,6 +47,7 @@ class RecordEdit(BaseModel):
 class KnowledgeHistoryFilter(BaseFilter):
     id: Optional[str] = Field(None, alias="_id")
     ask: str =None
+    prompt:str=None
     answer: str =None
     user: str=None
     department:Optional[list[str]]=None
@@ -54,6 +57,10 @@ class KnowledgeHistoryFilter(BaseFilter):
     status:Literal['normal','suggest-solved','suggest-unsolved']=None
     reponse:QuestionReponse=None
     linked_knowledge_id:str=None
+    
+class KnowledgeHistoryGroup(BaseModel):
+    main_category:bool=False
+    sub_category:bool=False
 
 # class MaincategoryHistoryFilter(BaseFilter):
 #     id: Optional[str] = Field(None, alias="_id")
