@@ -136,6 +136,7 @@ class KnowledgeFilter(BaseFilter):
     department: Optional[list[str]] = None
     created_by: Optional[list[str]] = None
     keywords: Optional[str] = None
+    company:Optional[str]=None
     # start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
     # end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
     sort:Optional[str]=None
@@ -148,6 +149,7 @@ class AggrestionKnowledgeFilter(BaseFilter):
     sub_categorys: Optional[list[str]] = None
     departments: Optional[list[str]] = None
     created_by: Optional[list[str]] = None
+    company:Optional[str]=None
     keywords: Optional[list[str]] = None
     # start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
     # end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
