@@ -3,7 +3,7 @@ from typing import Optional
 from icecream import ic
 import json 
 
-from schemes.aiSchemes import KnowledgeHistoryFilter,KnowledgeHistoryGroup,Background
+from schemes.aiSchemes import KnowledgeHistoryFilter,KnowledgeHistoryGroup,Background,RecordEdit
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter,GroupKnowledgeFilter
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
@@ -94,7 +94,7 @@ async def get_filtered_knowledge(request:Request,data_filter:AggrestionKnowledge
     # department
     ic(data_filter)
     data_filter.departments = user_profile.get('department',[])
-    result = await KnowledgeBase(request).get_knowledge(data_filter)
+    result = await KnowledgeBase(request).get_knowledge(data_filter,)
     return ResponseModel(message="ok", data=result)
 
 
@@ -487,9 +487,19 @@ async def generate_keywords(request:Request,background:Background,user_session=D
     tags=await AI(request).auto_tagging([],readings,extend=True,count=4,my_model="gpt-4.1-nano",summary_tag=True)
     return ResponseModel(message="ok", data=tags)
 
+# 要計算次數
 @trace
 @router.post('/api/ai/rewrite',tags=['AI'])
 async def generate_keywords(request:Request,background:Background,user_session=Depends(login_required(authority="admin"))):
     readings=json.dumps(background.model_dump(exclude_none=True,exclude_unset=True))
     result=await AI(request).rewrite(readings)
-    return ResponseModel(message="ok", data=result)
+    #record id
+    
+    ic(result[1])
+    result2=await AI(request).edit_record(result[1],RecordEdit(
+        main_category=background.main_category,
+        sub_category=background.sub_category
+    ))
+    ic(result2)
+    
+    return ResponseModel(message="ok", data=result[0])

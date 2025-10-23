@@ -6,7 +6,7 @@ from bson import ObjectId
 
 from errors import SettingsError,BadInputError,AIError
 from tools import _ensure_model,cosine_similarity
-from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse
+from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse,Background
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
@@ -338,7 +338,7 @@ class AI():
         pass
     
     @trace 
-    async def rewrite(self,background):
+    async def rewrite(self,background:Background):
         companydata= await Company(self.request).get_company(self.user_stamp['company'])
         company_background= await self.generate_background_data(companydata)
         prompt=f"""
@@ -352,7 +352,7 @@ class AI():
         不要有任何沒有意義的問候和開頭，直接幫我重寫問題的答案
         """
         result=await self.ask_ai(prompt,"rewrite")
-        return result[0]
+        return result
 
     
     @trace

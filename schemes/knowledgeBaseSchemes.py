@@ -153,8 +153,9 @@ class AggrestionKnowledgeFilter(BaseFilter):
     keywords: Optional[list[str]] = None
     # start_time: Optional[datetime] = Field(default=None, description="開始時間，用於 timestamp 篩選")
     # end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
-    sort:Optional[str]=None
-    content:Optional[str]=None
+    sort:Optional[str]= None
+    content:Optional[str]= None
+    time_field:Optional[str]= None
     status:Optional[Literal['solved','unsolved']]=None
     
 class GroupKnowledgeFilter(BaseModel):

@@ -109,7 +109,7 @@ class KnowledgeBase():
                 ic(setting['category'][i]['status'])
         return await setting_obj.update_settings(setting)
     @trace
-    async def get_knowledge(self,filter:KnowledgeFilter| AggrestionKnowledgeFilter,include_embedding=False,mask={})->list:
+    async def get_knowledge(self,filter:KnowledgeFilter| AggrestionKnowledgeFilter,include_embedding=False,mask={},time_field="time_stamp_last_edit")->list:
         ic(filter)
         filter_dict = filter.model_dump(exclude_none=True,exclude_unset=True)
         
@@ -151,7 +151,7 @@ class KnowledgeBase():
                 time_filter["$gte"] = filter_dict["start_time"]
             if "end_time" in filter_dict:
                 time_filter["$lte"] = filter_dict["end_time"]
-            mongo_filter["time_stamp_last_edit"] = time_filter
+            mongo_filter[time_field] = time_filter
 
         if "keyword" in filter_dict:
             mongo_filter["example_question"] = {
