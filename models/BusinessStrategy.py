@@ -83,72 +83,72 @@ class BusinessStrategy():
     @trace 
     async def generate_ai_strategy(self,strategy_type:str)->BusinessStrategyCreate:
         action_suggestion_ids=[]
-        # try:
-        result = await self.strategy_selected_questions(strategy_type)
-        ic(result)
-        current_settings=await Settings(self.request).get_settings()
-        readings=str(result[1])
-        ic(readings)
-        
-        #main data
-        main_category=result[0]
-        ic(current_settings)
-        current_category=current_settings['category']
-        if not result[0] in current_category:
-            raise BadInputError("main_category not exist")
-        
-        department=current_category[result[0]]['access']
-        tags=await AI(self.request).auto_tagging([],readings,extend=True,count=4,my_model="gpt-4.1-nano",summary_tag=True)
-        tags=tags.split(',')
-        ic(main_category)
-        ic(department)
-        ic(tags)
+        try:
+            result = await self.strategy_selected_questions(strategy_type)
+            ic(result)
+            current_settings=await Settings(self.request).get_settings()
+            readings=str(result[1])
+            ic(readings)
+            
+            #main data
+            main_category=result[0]
+            ic(current_settings)
+            current_category=current_settings['category']
+            if not result[0] in current_category:
+                raise BadInputError("main_category not exist")
+            
+            department=current_category[result[0]]['access']
+            tags=await AI(self.request).auto_tagging([],readings,extend=True,count=4,my_model="gpt-4.1-nano",summary_tag=True)
+            tags=tags.split(',')
+            ic(main_category)
+            ic(department)
+            ic(tags)
 
-        # tags=讓ai針對這些knowledge給一個
-        
-        # insight
-        for i in range(self.retry_times):
-            try:
-                insights,actions = await AI(self.request).generate_insight(readings,strategy_type,3)
-            except:
-                ic("error in retry")
-            else:
-                break
-                
-        ic(insights)
-        ic("insight available")
-        
-        summary_insights=[]
-        for i in insights:
-            summary_insights.append(BusinessStrategySummaryItem(title=i['title'],content=i['content']))
-        
-        # create actions
-        for i in actions:
-            ic(i['recommand_priority'])
-            id = await ActionSuggestion(self.request).create_action_suggestion(ActionSuggestionCreate(
-                title=i['title'],
-                content=i['content'],
-                expect_outcome=i['expect_outcome'],
-                recommand_priority=i['recommand_priority'],
-                type=strategy_type
-            ))
-            action_suggestion_ids.append(id)
-        
-        strategy = BusinessStrategyCreate(
-            main_category=main_category,
-            department=department,
-            tags=tags,
-            summary=summary_insights,
-            type=strategy_type,
-            action_suggestion_id=action_suggestion_ids
-        )
-        result= await self.create_business_strategy(strategy)
-        return result
-        # except Exception as e:
-        #     for i in action_suggestion_ids:
-        #         await ActionSuggestion(self.request).delete_action_suggestion(ActionSuggestionFilter(_id=i))
-        #     ic('actions deleted!')
-        #     raise BusinessStrategyError(str(e))
+            # tags=讓ai針對這些knowledge給一個
+            
+            # insight
+            for i in range(self.retry_times):
+                try:
+                    insights,actions = await AI(self.request).generate_insight(readings,strategy_type,3)
+                except:
+                    ic("error in retry")
+                else:
+                    break
+                    
+            ic(insights)
+            ic("insight available")
+            
+            summary_insights=[]
+            for i in insights:
+                summary_insights.append(BusinessStrategySummaryItem(title=i['title'],content=i['content']))
+            
+            # create actions
+            for i in actions:
+                ic(i['recommand_priority'])
+                id = await ActionSuggestion(self.request).create_action_suggestion(ActionSuggestionCreate(
+                    title=i['title'],
+                    content=i['content'],
+                    expect_outcome=i['expect_outcome'],
+                    recommand_priority=i['recommand_priority'],
+                    type=strategy_type
+                ))
+                action_suggestion_ids.append(id)
+            
+            strategy = BusinessStrategyCreate(
+                main_category=main_category,
+                department=department,
+                tags=tags,
+                summary=summary_insights,
+                type=strategy_type,
+                action_suggestion_id=action_suggestion_ids
+            )
+            result= await self.create_business_strategy(strategy)
+            return result
+        except Exception as e:
+            for i in action_suggestion_ids:
+                await ActionSuggestion(self.request).delete_action_suggestion(ActionSuggestionFilter(_id=i))
+            ic('actions deleted!')
+            raise BusinessStrategyError(str(e))
         
     @trace
     async def strategy_selected_questions(self,strategy_type:str)->str:
@@ -180,9 +180,27 @@ class BusinessStrategy():
         elif strategy_type =="Strategy":
             # 待回覆最多
             # status:'suggest-unsolved'
-
             
-            pass
+            result = await Statistic(self.request).group_knowledge_count(self.user_stamp['company'],KnowledgeFilter(
+                status="unsolved"
+            ),group=KnowledgeHistoryGroup(
+                main_category=True
+            ))
+            target_categorys=[]
+            target_categorys.append(result[0]['_id']['main_category'])
+            sorted_samples = await Statistic(self.request).count_knowledge_history(self.company,KnowledgeHistoryFilter(main_category=target_categorys))
+            ic(sorted_samples)
+            ids=[]
+            for i in sorted_samples:
+                ids.append(i['_id']['knowledge_id'])
+            ic(ids)
+            # 有alias的不允許使用原本的名字進行呼叫
+            target_docs = await KnowledgeBase(self.request).get_knowledge(AggrestionKnowledgeFilter(_id=ids),mask=knowledge_data_mask)
+            ic(target_docs)
+            
+            if len(target_categorys)==1:
+                target_categorys=target_categorys[0]
+            return target_categorys,target_docs
         
         elif strategy_type =='Innovation':# not tested
             # 優化次數最多
