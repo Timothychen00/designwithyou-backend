@@ -1668,3 +1668,12 @@
 {"timestamp": "2025-10-25T01:47:08.992136Z", "name": "AI.create_record", "level": 2, "duration": 0.061189125000055355}
 {"timestamp": "2025-10-25T01:47:08.992155Z", "name": "User.get_user", "level": 3, "duration": 0.012622290999388497}
 {"timestamp": "2025-10-25T01:47:08.992168Z", "name": "KnowledgeBase.create_knowledge", "level": 1, "duration": 0.020645833000344282}
+{"timestamp": "2025-10-25T02:01:24.957177Z", "name": "User.login", "level": 0, "duration": 0.9588051669998094}
+{"timestamp": "2025-10-25T02:01:24.957979Z", "name": "verify_password", "level": 1, "duration": 0.5270283749996452}
+{"timestamp": "2025-10-25T02:01:24.958000Z", "name": "User.save_login_record", "level": 1, "duration": 0.02312408299985691}
+{"timestamp": "2025-10-25T02:01:36.311668Z", "name": "User.get_user", "level": 0, "duration": 0.02851258400005463}
+{"timestamp": "2025-10-25T02:01:36.479982Z", "name": "KnowledgeBase.get_knowledge", "level": 0, "duration": 0.03926987500017276}
+{"timestamp": "2025-10-25T02:02:45.110725Z", "name": "User.get_user", "level": 0, "duration": 0.015231917000164685}
+{"timestamp": "2025-10-25T02:02:45.188093Z", "name": "KnowledgeBase.get_knowledge", "level": 0, "duration": 0.06463308399997914}
+{"timestamp": "2025-10-25T02:02:59.221720Z", "name": "User.get_user", "level": 0, "duration": 0.03497758299999987}
+{"timestamp": "2025-10-25T02:02:59.256648Z", "name": "KnowledgeBase.get_knowledge", "level": 0, "duration": 0.025509999999485444}

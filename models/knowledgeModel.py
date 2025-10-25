@@ -111,8 +111,11 @@ class KnowledgeBase():
     @trace
     async def get_knowledge(self,filter:KnowledgeFilter| AggrestionKnowledgeFilter,include_embedding=False,mask={},time_field="time_stamp_last_edit")->list:
         ic(filter)
+        # custome time field 
+        if filter.time_field:
+            time_field=filter.time_field
+            
         filter_dict = filter.model_dump(exclude_none=True,exclude_unset=True)
-        
         
         ic(filter_dict)
         

@@ -142,6 +142,7 @@ class KnowledgeFilter(BaseFilter):
     sort:Optional[str]=None
     content:Optional[str]=None
     status:Optional[Literal['solved','unsolved']]=None
+    time_field:Optional[Literal['time_stamp_created','time_stamp_last_edit']]=None
     
 class AggrestionKnowledgeFilter(BaseFilter):
     id: Optional[list[str]] = Field(None, alias="_id") # _id開頭會被忽略
@@ -155,7 +156,7 @@ class AggrestionKnowledgeFilter(BaseFilter):
     # end_time: Optional[datetime] = Field(default=None, description="結束時間，用於 timestamp 篩選")
     sort:Optional[str]= None
     content:Optional[str]= None
-    time_field:Optional[str]= None
+    time_field:Optional[Literal['time_stamp_created','time_stamp_last_edit']]=None
     status:Optional[Literal['solved','unsolved']]=None
     
 class GroupKnowledgeFilter(BaseModel):
