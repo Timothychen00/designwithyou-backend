@@ -1677,3 +1677,17 @@
 {"timestamp": "2025-10-25T02:02:45.188093Z", "name": "KnowledgeBase.get_knowledge", "level": 0, "duration": 0.06463308399997914}
 {"timestamp": "2025-10-25T02:02:59.221720Z", "name": "User.get_user", "level": 0, "duration": 0.03497758299999987}
 {"timestamp": "2025-10-25T02:02:59.256648Z", "name": "KnowledgeBase.get_knowledge", "level": 0, "duration": 0.025509999999485444}
+{"timestamp": "2025-10-25T02:34:33.970960Z", "name": "User.login", "level": 0, "duration": 1.3053327500001615}
+{"timestamp": "2025-10-25T02:34:33.971762Z", "name": "verify_password", "level": 1, "duration": 0.5307929170003263}
+{"timestamp": "2025-10-25T02:34:33.971808Z", "name": "User.save_login_record", "level": 1, "duration": 0.03649708299963095}
+{"timestamp": "2025-10-25T02:35:23.223008Z", "name": "User.login", "level": 0, "duration": 0.8679275419999612}
+{"timestamp": "2025-10-25T02:35:23.223874Z", "name": "verify_password", "level": 1, "duration": 0.5221255410006052}
+{"timestamp": "2025-10-25T02:35:23.223896Z", "name": "User.save_login_record", "level": 1, "duration": 0.021263749999889114}
+{"timestamp": "2025-10-25T02:35:36.290344Z", "name": "BusinessStrategy.generate_ai_strategy_brief", "level": 0, "duration": 0.11109654200026853}
+{"timestamp": "2025-10-25T02:35:36.290383Z", "name": "Statistic.count_maincategory_history", "level": 1, "duration": 0.07016750000002503}
+{"timestamp": "2025-10-25T02:35:36.290396Z", "name": "Statistic.group_knowledge_count", "level": 1, "duration": 0.019836333000057493}
+{"timestamp": "2025-10-25T02:35:36.290407Z", "name": "Statistic.group_knowledge_history", "level": 1, "duration": 0.018013042000347923}
+{"timestamp": "2025-10-25T02:35:40.147246Z", "name": "BusinessStrategy.generate_ai_strategy_brief", "level": 0, "duration": 0.10701266699925327}
+{"timestamp": "2025-10-25T02:35:40.147297Z", "name": "Statistic.count_maincategory_history", "level": 1, "duration": 0.0422984169999836}
+{"timestamp": "2025-10-25T02:35:40.147314Z", "name": "Statistic.group_knowledge_count", "level": 1, "duration": 0.04179404200021963}
+{"timestamp": "2025-10-25T02:35:40.147327Z", "name": "Statistic.group_knowledge_history", "level": 1, "duration": 0.019742417000088608}

@@ -33,11 +33,11 @@
   },
   {
     "name": "User.login",
-    "count": 151,
-    "total": 170.71181779415463,
+    "count": 153,
+    "total": 172.88507808615475,
     "max": 3.7994880839996767,
-    "last_seen": "2025-10-25T02:01:24.959945Z",
-    "avg": 1.1305418396963882
+    "last_seen": "2025-10-25T02:35:23.225861Z",
+    "avg": 1.1299678306284624
   },
   {
     "name": "AI.suggesting",
@@ -57,11 +57,11 @@
   },
   {
     "name": "verify_password",
-    "count": 150,
-    "total": 86.28596746434539,
+    "count": 152,
+    "total": 87.33888592234632,
     "max": 1.2015228749951348,
-    "last_seen": "2025-10-25T02:01:24.959954Z",
-    "avg": 0.575239783095636
+    "last_seen": "2025-10-25T02:35:23.225869Z",
+    "avg": 0.5745979336996468
   },
   {
     "name": "AI.embedding",
@@ -105,11 +105,11 @@
   },
   {
     "name": "User.save_login_record",
-    "count": 150,
-    "total": 4.9914022082749625,
+    "count": 152,
+    "total": 5.049163041274483,
     "max": 0.2617064170008234,
-    "last_seen": "2025-10-25T02:01:24.959958Z",
-    "avg": 0.033276014721833086
+    "last_seen": "2025-10-25T02:35:23.225873Z",
+    "avg": 0.03321817790312159
   },
   {
     "name": "KnowledgeBase.get_knowledge",
@@ -121,11 +121,11 @@
   },
   {
     "name": "Statistic.count_maincategory_history",
-    "count": 58,
-    "total": 3.390530166849203,
+    "count": 60,
+    "total": 3.5029960838492116,
     "max": 0.2873660830009612,
-    "last_seen": "2025-10-23T15:29:27.669454Z",
-    "avg": 0.05845741666981384
+    "last_seen": "2025-10-25T02:35:40.147823Z",
+    "avg": 0.058383268064153525
   },
   {
     "name": "KnowledgeBase.create_knowledge",
@@ -145,11 +145,11 @@
   },
   {
     "name": "Statistic.group_knowledge_count",
-    "count": 13,
-    "total": 1.4266087500160438,
+    "count": 15,
+    "total": 1.488239125016321,
     "max": 0.6644405830011237,
-    "last_seen": "2025-10-24T02:54:27.575276Z",
-    "avg": 0.10973913461661876
+    "last_seen": "2025-10-25T02:35:40.147828Z",
+    "avg": 0.09921594166775473
   },
   {
     "name": "Settings.get_settings",
@@ -161,11 +161,11 @@
   },
   {
     "name": "Statistic.group_knowledge_history",
-    "count": 11,
-    "total": 0.8160726639762288,
+    "count": 13,
+    "total": 0.8538281229766653,
     "max": 0.14501716598169878,
-    "last_seen": "2025-10-23T17:14:31.008792Z",
-    "avg": 0.07418842399783898
+    "last_seen": "2025-10-25T02:35:40.147832Z",
+    "avg": 0.06567908638282041
   },
   {
     "name": "Statistic.get_knowledge_count",
@@ -190,6 +190,14 @@
     "max": 0.07574558397755027,
     "last_seen": "2025-10-24T02:54:27.575334Z",
     "avg": 0.024726013886518357
+  },
+  {
+    "name": "BusinessStrategy.generate_ai_strategy_brief",
+    "count": 2,
+    "total": 0.2181092089995218,
+    "max": 0.11109654200026853,
+    "last_seen": "2025-10-25T02:35:40.147815Z",
+    "avg": 0.1090546044997609
   },
   {
     "name": "Company.get_company",

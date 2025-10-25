@@ -5,14 +5,17 @@ from schemes.settingsSchemes import SettingsUpdateScheme
 from models.knowledgeModel import KnowledgeBase
 from models.settingsModel import Settings
 from auth import login_required
+from tools import trace
 
 router = APIRouter( tags=['Settings'])
 
+@trace
 @router.get("/settings")
 async def get_setttings(request:Request):
     result = await Settings(request).get_settings()
     return ResponseModel(message=str(result))
 
+@trace
 @router.put("/settings")
 async def update_settings(request:Request,data:SettingsUpdateScheme):
     result = await Settings(request).update_settings(data)

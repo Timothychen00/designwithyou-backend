@@ -226,3 +226,31 @@ class BusinessStrategy():
             if len(target_categorys)==1:
                 target_categorys=target_categorys[0]
             return target_categorys,target_docs
+
+    @trace
+    async def generate_ai_strategy_brief(self):
+        result={}
+        result_operational = await Statistic(self.request).count_maincategory_history(self.company,KnowledgeHistoryFilter(),limit=1)
+        ic('here')
+        target_categorys = list(result_operational.keys())
+        ic(target_categorys)
+        result['Operational']=target_categorys[0]
+        
+        result_strategy = await Statistic(self.request).group_knowledge_count(self.user_stamp['company'],KnowledgeFilter(
+            status="unsolved"
+        ),group=KnowledgeHistoryGroup(
+            main_category=True
+        ))
+        target_categorys=[]
+        result['Strategy']=result_strategy[0]['_id']['main_category']
+        
+        result_innovation = await Statistic(self.request).group_knowledge_history(self.company,KnowledgeHistoryFilter(type="rewrite"),grouping=KnowledgeHistoryGroup(main_category=True))
+        ic(result_innovation)
+        target_categorys=[]
+        for i in result_innovation:
+            if i['_id']['main_category']:
+                target_categorys.append(i['_id']['main_category'])
+        result['Innovation']=target_categorys[0]
+        # result=result[0]['_id']['main_category']
+        # target_categorys = list(result.keys())
+        return result
