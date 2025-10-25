@@ -104,7 +104,7 @@ async def load_preset_knowledge(request:Request,user_session=Depends(login_requi
     companyid = user_session['company']
     user_profile=await User(request).get_user({"username":user_session['username']})
     company_profile = await Company(request).get_company(companyid)
-    
+    ic(9999)
     category_dict={}
     settings = await Settings(request).get_settings()
     for i in settings['category']:

@@ -201,72 +201,72 @@ class AI():
         ic(topic)
         
         knowledge_ids = []
-        try:
-            # for i in topic:
-            prompt=f'''
-                幫我根據以下關於使用者以及其公司的相關背景知識和產業型態特性等，為每一個主構面生成{count}個範例問題，以及其屬於的子構面。
-                這邊需要生成的問題主要是該公司的員工最有可能或是最常見的問題。
-                子構面的部分可以選擇沒有出現過的，但是不要新增和已經存在的子構面過於相近的子構面。
-                格式說明：每一行的問題分成三個部分，每一個部分用|進行分割，每一行的開頭和結尾也有|
-                例如：|問題|子構面|主構面|
-                
-                背景知識：
-                {background_dict}
-                主構面和子構面的對應關係：
-                {topic_dict}
-                
-                以下是範例：
-                ——————————————————
-                背景知識：
-                公司名稱: 寶雅國際股份有限公司,
-                公司類型: 上櫃公司（Retail 零售通路商）,
-                公司特性: 美妝生活雜貨專賣店；產品涵蓋彩妝、保養、流行內衣袜、生活日常用品與精緻個人用品；主要客群為年輕女性；全台分店眾多；線上＋實體通路並行,
-                產業說明: 居家生活／生活日常用品零售業。寶雅除了販售歐美、日韓流行彩妝與保養品，也有內衣襪與精緻個人用品，為台灣美妝生活雜貨專賣通路領導品牌之一。
-                主構面和子構面的對應關係：
-                財務管理:[現金與收銀管理]
-                每一個主構面生成5個範例問題
-                
-                你的回應：
-                |每日營收結帳流程為何？|現金與收銀管理|財務管理
-                |櫃檯短溢收處理流程為何？|現金與收銀管理|財務管理
-                |收銀機異常斷電怎麼辦？|現金與收銀管理|財務管理
-                |櫃檯是否可以備有私人物品？|現金與收銀管理|財務管理
-                |是否可使用非指定銀行存現？|現金與收銀管理|財務管理
-                
-                注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！格式錯誤會導致系統失敗，請務必遵守格式要求！確保回答的個數也要符合要求
-            '''
-            result_string = await self.suggesting(prompt,user_profile)
-            ic(result_string)
-                # 將 AI 回傳內容轉為 list of (question, sub_category, main_category)
-            lines = [line.strip('|') for line in result_string.strip().split('\n') if line.strip()]
-            qa_list = [line.split('|') for line in lines if len(line.split('|')) == 3]
+        # try:
+        # for i in topic:
+        prompt=f'''
+            幫我根據以下關於使用者以及其公司的相關背景知識和產業型態特性等，為每一個主構面生成{count}個範例問題，以及其屬於的子構面。
+            這邊需要生成的問題主要是該公司的員工最有可能或是最常見的問題。
+            子構面的部分可以選擇沒有出現過的，但是不要新增和已經存在的子構面過於相近的子構面。
+            格式說明：每一行的問題分成三個部分，每一個部分用|進行分割，每一行的開頭和結尾也有|
+            例如：|問題|子構面|主構面|
             
-            ic(len(qa_list))
-            if len(qa_list)!=count*len(topic):
-                raise AIError("Result count generated not expected!")
-
-            for q, sub, main in qa_list:
-                embed=await self.embedding(q.strip(),user_profile)
-                temp=KnowledgeSchemeCreate(
-                    example_question=q.strip(),
-                    main_category=main.strip(),
-                    sub_category=sub.strip(),
-                    created_by=user_profile['username'],
-                    company=user_profile["company"],
-                    department=user_profile['department'],
-                    embedding_example_question=embed
-                    
-                )
-                id=await KnowledgeBase(self.request).create_knowledge(temp)
-                knowledge_ids.append(id)
-
-            ic(knowledge_ids)
-            return knowledge_ids
-        except:
-            for id in knowledge_ids:
-                await KnowledgeBase(self.request).delete_knowledge(id)
-            ic("cleared")
+            背景知識：
+            {background_dict}
+            主構面和子構面的對應關係：
+            {topic_dict}
+            
+            以下是範例：
+            ——————————————————
+            背景知識：
+            公司名稱: 寶雅國際股份有限公司,
+            公司類型: 上櫃公司（Retail 零售通路商）,
+            公司特性: 美妝生活雜貨專賣店；產品涵蓋彩妝、保養、流行內衣袜、生活日常用品與精緻個人用品；主要客群為年輕女性；全台分店眾多；線上＋實體通路並行,
+            產業說明: 居家生活／生活日常用品零售業。寶雅除了販售歐美、日韓流行彩妝與保養品，也有內衣襪與精緻個人用品，為台灣美妝生活雜貨專賣通路領導品牌之一。
+            主構面和子構面的對應關係：
+            財務管理:[現金與收銀管理]
+            每一個主構面生成5個範例問題
+            
+            你的回應：
+            |每日營收結帳流程為何？|現金與收銀管理|財務管理
+            |櫃檯短溢收處理流程為何？|現金與收銀管理|財務管理
+            |收銀機異常斷電怎麼辦？|現金與收銀管理|財務管理
+            |櫃檯是否可以備有私人物品？|現金與收銀管理|財務管理
+            |是否可使用非指定銀行存現？|現金與收銀管理|財務管理
+            
+            注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！格式錯誤會導致系統失敗，請務必遵守格式要求！確保回答的個數也要符合要求
+        '''
+        result_string = await self.suggesting(prompt)
+        ic(result_string)
+            # 將 AI 回傳內容轉為 list of (question, sub_category, main_category)
+        lines = [line.strip('|') for line in result_string.strip().split('\n') if line.strip()]
+        qa_list = [line.split('|') for line in lines if len(line.split('|')) == 3]
+        
+        ic(len(qa_list))
+        if len(qa_list)!=count*len(topic):
             raise AIError("Result count generated not expected!")
+
+        for q, sub, main in qa_list:
+            embed=await self.embedding(q.strip())
+            temp=KnowledgeSchemeCreate(
+                example_question=q.strip(),
+                main_category=main.strip(),
+                sub_category=sub.strip(),
+                created_by=user_profile['username'],
+                company=user_profile["company"],
+                department=user_profile['department'],
+                embedding_example_question=embed
+                
+            )
+            id=await KnowledgeBase(self.request).create_knowledge(temp)
+            knowledge_ids.append(id)
+
+        ic(knowledge_ids)
+        return knowledge_ids
+        # except:
+            # for id in knowledge_ids:
+            #     await KnowledgeBase(self.request).delete_knowledge(id)
+            # ic("cleared")
+            # raise AIError("Result count generated not expected!")
     @trace
     async def embedding(self,content:str):
         by=self.user_stamp
