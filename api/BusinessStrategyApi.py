@@ -22,7 +22,7 @@ async def get_business_strategy(request: Request,user_session=Depends(login_requ
 async def get_filtered_business_strategy(request:Request,data_filter:BusinessStrategyFilter,user_session=Depends(login_required(authority="admin"))):
     result = await BusinessStrategy(request).get_business_strategy(data_filter)
     if len(result)==0:
-        if user_session['login']['authority']=='owner':
+        if user_session['authority']=='owner':
             result = await BusinessStrategy(request).generate_ai_strategy(data_filter.type)
     return ResponseModel(message="ok",data = result)
 

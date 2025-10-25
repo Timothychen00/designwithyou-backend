@@ -142,6 +142,7 @@ class AI():
         -1,同業通常會在入職後第一週安排產品知識與系統操作訓練，搭配 mentor 協助熟悉環境並建立服務流程標準。
                 
         注意：回覆的時候請符合上面說明的格式，不要有任何多餘的文字和標點符號，也不要有任何的空行！格式錯誤會導致系統失敗，請務必遵守格式要求！
+        回覆的id也必須是有存在的id，不能自行創造或是進行修改
         """
         return await self.ask_ai(prompt,"chat",ask=question)
     @trace
@@ -293,9 +294,11 @@ class AI():
     @trace
     async def vector_search(self,content:str,main_categories:list[str],topn=10):
         vector=await self.embedding(content)
+        # ic(vector)
         knowledges=await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(main_category=main_categories),True)
         data=[]
         for knowledge in knowledges:
+
             similarity=cosine_similarity(vector,knowledge['embedding_example_question'])
             data.append((similarity,knowledge['example_question'],str(knowledge['_id']),knowledge['example_answer']))
         
@@ -307,30 +310,34 @@ class AI():
     async def generate_chat_answer(self,company_profile,main_category:str,question:str):
         relevant=await self.vector_search(question,main_category,3)
         background=await self.generate_background_data(company_profile)
-        result= await self.make_response(question,background,relevant=relevant)
         
-        if ','not in result[0]:
-            raise AIError("generate_chat_answer format error")
-        else:
-            result_list = result[0].split(',')
-            if result_list[1] == "None":
-                ic(result_list[0])
-                doc = await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(_id=result_list[0]))
-                if not doc :
-                    raise AIError("Bad id generated")
-                await self.edit_record(result[1],RecordEdit(
-                    linked_knowledge_id=result_list[0],
-                    main_category=doc['main_category'],
-                    sub_category=doc['sub_category']))
-                print("save id into record")
-                ic(doc[0]['example_question'],doc[0]['example_answer'])
-                final_result = doc[0]['example_answer']
+        for i in range(3):
+            try:
+                result= await self.make_response(question,background,relevant=relevant)
+                if ','not in result[0]:
+                    raise AIError("generate_chat_answer format error")
+                else:
+                    result_list = result[0].split(',')
+                    if result_list[1] == "None":
+                        ic(result_list[0])
+                        doc = await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(_id=result_list[0]))
+                        if not doc :
+                            raise AIError("Bad id generated")
+                        await self.edit_record(result[1],RecordEdit(
+                            linked_knowledge_id=result_list[0],
+                            main_category=doc[0]['main_category'],
+                            sub_category=doc[0]['sub_category']))
+                        print("save id into record")
+                        ic(doc[0]['example_question'],doc[0]['example_answer'])
+                        final_result = doc[0]['example_answer']
+                        return final_result,result_list[0]
+                    else:
+                        final_result = result_list[1]
+                    ic(final_result)
+                    return final_result,result_list[0]
+            except Exception as e:
+                ic(str(e))
                 
-            else:
-                
-                final_result = result_list[1]
-            ic(final_result)
-            return final_result
 
                 
     @trace
