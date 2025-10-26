@@ -78,6 +78,7 @@ async def get_knowledge(request:Request,user_session=Depends(login_required(auth
     data_filter=KnowledgeFilter()
     username = user_session['username']
     user_profile = await User(request).get_user({"username":username}) # company_id
+    ic(user_profile)
     # department
     data_filter.department = user_profile.get('department',[])
     result = await KnowledgeBase(request).get_knowledge(data_filter)
@@ -455,7 +456,7 @@ async def knowledge_history_filter(request:Request,filter:KnowledgeHistoryFilter
 
 @trace
 @router.post('/api/knowledge_history/knowledge_hotness/filter',tags=['Statistics'])
-async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,grouping:KnowledgeHistoryGroup,user_session=Depends(login_required(authority="admin"))):
+async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,grouping:KnowledgeHistoryGroup,user_session=Depends(login_required(authority="normal"))):
     """
     """
     svc = Statistic(request)
@@ -468,7 +469,7 @@ async def knowledge_history(request:Request,filter:KnowledgeHistoryFilter,groupi
 
 @trace
 @router.post('/api/knowledge_history/knowledge_hotness/group',tags=['Statistics'])
-async def knowledge_history_group(request:Request,filter:KnowledgeHistoryFilter,grouping:KnowledgeHistoryGroup,user_session=Depends(login_required(authority="admin"))):
+async def knowledge_history_group(request:Request,filter:KnowledgeHistoryFilter,grouping:KnowledgeHistoryGroup,user_session=Depends(login_required(authority="normal"))):
     """
     group不同構面的knowledg搜尋次數
     """
