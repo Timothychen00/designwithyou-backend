@@ -13,6 +13,7 @@ from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCre
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from schemes.actionSuggestionSchemes import ActionSuggestionFilter,ActionSuggestionCreate,ActionSuggestionEdit,ActionSuggestionReply
 from .userModel import User
+from .BusinessStrategy import BusinessStrategy
 from tools import auto_build_mongo_filter
 from .knowledgeModel import KnowledgeBase
 from tools import trace
@@ -116,12 +117,12 @@ class ActionSuggestion():
     
     @trace
     async def adopt(self,data_filter:ActionSuggestionFilter,deadline:datetime):
-        result = await self.edit_business_strategy(data_filter,{"status":"adopted","deadline_time_stamp":deadline})
+        result = await BusinessStrategy(self.request).edit_business_strategy(data_filter,{"status":"adopted","deadline_time_stamp":deadline})
         return result
     
     @trace
     async def unadopt(self,data_filter:ActionSuggestionFilter):
-        result = await self.edit_business_strategy(data_filter,{"status":"unadopted"})
+        result = await BusinessStrategy(self.request).edit_business_strategy(data_filter,{"status":"unadopted"})
         return result
 # {
     

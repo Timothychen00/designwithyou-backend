@@ -11,13 +11,14 @@ from schemes.actionSuggestionSchemes import ActionSuggestionFilter,ActionSuggest
 from schemes.BusinessStrategySchemes import BusinessStrategyCreate,BusinessStrategyEdit,BusinessStrategyFilter,BusinessStrategySummaryItem
 from schemes.knowledgeBaseSchemes import KnowledgeFilter,AggrestionKnowledgeFilter
 from .userModel import User
-from .actionSuggestionModel import ActionSuggestion
+
 from .settingsModel import Settings
 from .statisticsModel import Statistic
 from .aiModel import AI
 from tools import auto_build_mongo_filter
 from .knowledgeModel import KnowledgeBase
 from tools import trace
+
 
 class BusinessStrategy():
 
@@ -82,6 +83,7 @@ class BusinessStrategy():
 
     @trace 
     async def generate_ai_strategy(self,strategy_type:str)->BusinessStrategyCreate:
+        from .actionSuggestionModel import ActionSuggestion
         action_suggestion_ids=[]
         try:
             result = await self.strategy_selected_questions(strategy_type)
