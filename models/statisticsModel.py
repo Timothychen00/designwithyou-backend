@@ -74,8 +74,9 @@ class Statistic():
     @trace
     async def get_active_user_count(self,company_id:str,filter:UserLoginScheme):
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
-        filter_dict.update({'company':company_id})
+        
         processed_filter= auto_build_mongo_filter(UserLoginScheme,filter_dict)
+        processed_filter.update({'company':company_id})
         ic(processed_filter)
         
         pipeline = [
@@ -91,8 +92,9 @@ class Statistic():
     @trace
     async def get_user_count(self,company_id:str,filter:UserFilter):
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
-        filter_dict.update({'company':company_id})
+        
         processed_filter= auto_build_mongo_filter(UserFilter,filter_dict)
+        processed_filter.update({'company':company_id})
         ic(processed_filter)
         return ic(await self.db.user.count_documents(processed_filter))
     
