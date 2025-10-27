@@ -262,7 +262,7 @@ async def ask(request:Request,data:str,user_session=Depends(login_required(autho
 
 @trace
 @router.get('/api/knowledge_base/knowledge_count',tags=['Statistics'])
-async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="admin"))):
+async def get_knowledge_count(request:Request,user_session=Depends(login_required(authority="normal"))):
     """
     取得公司整體知識條目的總數量
 
@@ -288,7 +288,7 @@ async def get_knowledge_count(request:Request,user_session=Depends(login_require
     return ResponseModel(message="ok", data=result)
 @trace
 @router.post('/api/knowledge_base/knowledge_count/filter',tags=['Statistics'])
-async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,user_session=Depends(login_required(authority="admin"))):
+async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
     """
     """
     svc = Statistic(request)
@@ -301,7 +301,7 @@ async def get_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,us
 
 @trace
 @router.post('/api/knowledge_base/knowledge_count/group',tags=['Statistics'])
-async def group_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,group:GroupKnowledgeFilter,user_session=Depends(login_required(authority="admin"))):
+async def group_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,group:GroupKnowledgeFilter,user_session=Depends(login_required(authority="normal"))):
     """
     """
     svc = Statistic(request)
