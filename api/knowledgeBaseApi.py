@@ -101,7 +101,7 @@ async def get_filtered_knowledge(request:Request,data_filter:AggrestionKnowledge
 
 @trace
 @router.post("/api/knowledge_base/load_preset_knowledge")
-async def load_preset_knowledge(request:Request,user_session=Depends(login_required(authority="admin"))):
+async def load_preset_knowledge(request:Request,strict_mode:bool=False,count:int=15,user_session=Depends(login_required(authority="admin"))):
     companyid = user_session['company']
     user_profile=await User(request).get_user({"username":user_session['username']})
     company_profile = await Company(request).get_company(companyid)
@@ -113,7 +113,7 @@ async def load_preset_knowledge(request:Request,user_session=Depends(login_requi
             category_dict[i]=settings['category'][i]['sub']
             
     ic(category_dict)
-    result=await AI(request).generate_knowlege(company_profile,category_dict,user_profile,15)
+    result=await AI(request).generate_knowlege(company_profile,category_dict,user_profile,count,strict_mode)
     return ResponseModel(message="ok", data=result)
 
 @trace

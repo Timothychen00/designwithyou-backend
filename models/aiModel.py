@@ -195,7 +195,7 @@ class AI():
         else:
             return background_dict
     @trace
-    async def generate_knowlege(self,background,topic:dict,user_profile,count=10):
+    async def generate_knowlege(self,background,topic:dict,user_profile,count=10,strict_mode=False):
         background_dict=await self.generate_background_data(background)
         topic_dict=json.dumps(topic, ensure_ascii=False, indent=2).replace("{","").replace("}","").replace("\"","").replace("\'","")
         ic(background_dict)
@@ -243,8 +243,9 @@ class AI():
             qa_list = [line.split('|') for line in lines if len(line.split('|')) == 3]
             
             ic(len(qa_list))
-            if len(qa_list)!=count*len(topic):
-                raise AIError("Result count generated not expected!")
+            if strict_mode:
+                if len(qa_list)!=count*len(topic):
+                    raise AIError("Result count generated not expected!")
 
             for q, sub, main in qa_list:
                 embed=await self.embedding(q.strip())

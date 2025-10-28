@@ -2173,3 +2173,9 @@
 {"timestamp": "2025-10-28T11:20:45.125647Z", "name": "ActionSuggestion.delete_action_suggestion", "level": 1, "duration": 0.013590540998848155}
 {"timestamp": "2025-10-28T11:20:45.125668Z", "name": "ActionSuggestion.delete_action_suggestion", "level": 1, "duration": 0.016103916001156904}
 {"timestamp": "2025-10-28T11:20:45.125684Z", "name": "ActionSuggestion.delete_action_suggestion", "level": 1, "duration": 0.0381866669995361}
+{"timestamp": "2025-10-28T11:21:38.825713Z", "name": "User.get_user", "level": 0, "duration": 0.015502417001698632}
+{"timestamp": "2025-10-28T11:21:38.952200Z", "name": "KnowledgeBase.edit_knowledge", "level": 0, "duration": 0.0004130000015720725}
+{"timestamp": "2025-10-28T11:21:44.596468Z", "name": "User.get_user", "level": 0, "duration": 0.06252716600283748}
+{"timestamp": "2025-10-28T11:21:44.606194Z", "name": "KnowledgeBase.edit_knowledge", "level": 0, "duration": 0.00011154099775012583}
+{"timestamp": "2025-10-28T11:21:59.871669Z", "name": "User.get_user", "level": 0, "duration": 0.01480283399723703}
+{"timestamp": "2025-10-28T11:21:59.975674Z", "name": "KnowledgeBase.get_knowledge", "level": 0, "duration": 0.09332225000252947}
