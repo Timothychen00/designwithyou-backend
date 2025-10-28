@@ -5,7 +5,7 @@ from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,Compan
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.companyModel import Company
 from models.BusinessStrategy import BusinessStrategy
-from schemes.BusinessStrategySchemes import BusinessStrategyCreate,BusinessStrategyEdit,BusinessStrategyFilter
+from schemes.BusinessStrategySchemes import BusinessStrategyCreate,BusinessStrategyEdit,BusinessStrategyFilter,BusinessStrategyDeleteFilter
 from auth import login_required
 from tools import trace
 
@@ -40,7 +40,7 @@ async def edit_business_strategy(request:Request,data_filter:BusinessStrategyFil
 
 @trace
 @router.delete('/api/business_strategy')
-async def delete_business_strategy(request:Request,data_filter:BusinessStrategyFilter,user_session=Depends(login_required(authority="normal"))):
+async def delete_business_strategy(request:Request,data_filter:BusinessStrategyDeleteFilter,user_session=Depends(login_required(authority="normal"))):
     result = await BusinessStrategy(request).delete_business_strategy(data_filter)
     return ResponseModel(message="ok",data = result)
 

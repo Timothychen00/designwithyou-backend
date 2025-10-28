@@ -8,9 +8,10 @@ from errors import SettingsError,BadInputError,ActionSuggestionError,BusinessStr
 from tools import _ensure_model,cosine_similarity
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse,KnowledgeHistoryFilter,KnowledgeHistoryGroup
 from schemes.actionSuggestionSchemes import ActionSuggestionFilter,ActionSuggestionCreate,ActionSuggestionEdit
-from schemes.BusinessStrategySchemes import BusinessStrategyCreate,BusinessStrategyEdit,BusinessStrategyFilter,BusinessStrategySummaryItem
+from schemes.BusinessStrategySchemes import BusinessStrategyCreate,BusinessStrategyEdit,BusinessStrategyFilter,BusinessStrategySummaryItem,BusinessStrategyDeleteFilter
 from schemes.knowledgeBaseSchemes import KnowledgeFilter,AggrestionKnowledgeFilter
 from .userModel import User
+
 
 from .settingsModel import Settings
 from .statisticsModel import Statistic
@@ -81,11 +82,18 @@ class BusinessStrategy():
             
     
     @trace
-    async def delete_business_strategy(self,data_filter:BusinessStrategyFilter):
-        processed_filter = auto_build_mongo_filter(BusinessStrategyFilter,data_filter.model_dump(exclude_none=True))
+    async def delete_business_strategy(self,data_filter:BusinessStrategyDeleteFilter):
+        result= await self.get_business_strategy(data_filter)
+        ids= result[0]['action_suggestion_id']
+        from .actionSuggestionModel import ActionSuggestion
+        count=0
+        for id in ids:
+            temp_result= await ActionSuggestion(self.request).delete_action_suggestion(ActionSuggestionFilter(_id=id))
+            count+=temp_result['deleted_count']
+        processed_filter = auto_build_mongo_filter(BusinessStrategyDeleteFilter,data_filter.model_dump(exclude_none=True))
         processed_filter['company']=self.company
         result = await self.collection.delete_many(processed_filter)
-        return {"deleted_count": result.deleted_count}
+        return {"deleted_count": result.deleted_count,"deleted_action_count":count}
 
     @trace 
     async def generate_ai_strategy(self,strategy_type:str)->BusinessStrategyCreate:
@@ -118,8 +126,11 @@ class BusinessStrategy():
             for i in range(self.retry_times):
                 try:
                     insights,actions = await AI(self.request).generate_insight(readings,strategy_type,3)
+                except BadInputError:
+                    raise 
                 except:
                     ic("error in retry")
+                    continue
                 else:
                     break
                     
@@ -152,11 +163,14 @@ class BusinessStrategy():
             )
             result= await self.create_business_strategy(strategy)
             return result
+        except BadInputError:
+            raise 
         except Exception as e:
             for i in action_suggestion_ids:
                 await ActionSuggestion(self.request).delete_action_suggestion(ActionSuggestionFilter(_id=i))
             ic('actions deleted!')
-            raise BusinessStrategyError(str(e))
+            
+            raise BusinessStrategyError(str(e)) from e
         
     @trace
     async def strategy_selected_questions(self,strategy_type:str)->str:
@@ -214,6 +228,8 @@ class BusinessStrategy():
             # 優化次數最多
             result = await Statistic(self.request).group_knowledge_history(self.company,KnowledgeHistoryFilter(type="rewrite"),grouping=KnowledgeHistoryGroup(main_category=True))
             ic(result)
+            if not result :
+                raise BadInputError("No data. please use rewrite first")
             target_categorys=[]
             for i in result:
                 if i['_id']['main_category']:
