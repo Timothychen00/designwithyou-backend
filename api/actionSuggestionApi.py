@@ -56,7 +56,7 @@ async def close(request:Request,data_filter:ActionSuggestionFilter,user_session=
 @trace
 @router.post('/api/action_suggestion/adopt')
 async def adopt(request:Request,data_filter:ActionSuggestionFilter,deadline:datetime,user_session=Depends(login_required(authority="owner"))):
-    result = await ActionSuggestion(request).adopt(data_filter)
+    result = await ActionSuggestion(request).adopt(data_filter,deadline)
     return ResponseModel(message="ok",data = result)
 
 @trace

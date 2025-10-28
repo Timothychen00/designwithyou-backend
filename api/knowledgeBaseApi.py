@@ -309,7 +309,7 @@ async def group_knowledge_count_filtered(request:Request,filter:KnowledgeFilter,
     if not filter:
         filter={}
     ic(group)
-    result = await svc.group_knowledge_count(company_id,filter,group)
+    result = await svc.group_knowledge_count(company_id,filter,group,limit=filter.limit)
     return ResponseModel(message="ok", data=result)
 
 

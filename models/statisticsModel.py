@@ -35,7 +35,7 @@ class Statistic():
             filter=_ensure_model(filter,KnowledgeFilter)
         filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
         filter_dict.update({'company':company_id})
-        processed_filter= auto_build_mongo_filter(KnowledgeFilter,filter_dict)
+        processed_filter= auto_build_mongo_filter(KnowledgeFilter,filter_dict,time_field=filter.time_field)
         
         pipeline=[
             {"$match": processed_filter},

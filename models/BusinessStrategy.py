@@ -66,9 +66,15 @@ class BusinessStrategy():
     
     @trace
     async def edit_business_strategy(self,data_filter:BusinessStrategyFilter,data:BusinessStrategyEdit | dict):
+        if isinstance(data_filter,dict):
+            data_filter=_ensure_model(data_filter,BusinessStrategyFilter)
+    
         if isinstance(data,dict):
-            data_filter=_ensure_model(data,BusinessStrategyEdit)
+            data=_ensure_model(data,ActionSuggestionEdit)
         data_filter.company=self.company
+    
+        data_filter=auto_build_mongo_filter(ActionSuggestionFilter,data_filter)
+        data=data.model_dump(exclude_defaults=True,exclude_unset=True)
 
         result = await self.collection.update_one(data_filter,data)
         return {"matched":result.matched_count,"modified":result.modified_count}

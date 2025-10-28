@@ -42,7 +42,7 @@ class ActionSuggestionEdit(BaseModel):
     type:Optional[Literal['Operational',"Strategy",'Innovation']]=None
 
 class ActionSuggestionFilter(BaseFilter):
-    id: Optional[list[str]] = Field(None, alias="_id")
+    id: Optional[str] = Field(None, alias="_id")
     title:Optional[str]=None
     # recommand_priority:Optional[tuple[int,str]]=None
     # expect_outcome:Optional[str]=None

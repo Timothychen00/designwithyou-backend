@@ -66,8 +66,13 @@ class ActionSuggestion():
     @trace
     async def edit_action_suggestion(self,data_filter:ActionSuggestionFilter|dict,data:ActionSuggestionEdit | dict):
         if isinstance(data_filter,dict):
-            data_filter=_ensure_model(data,ActionSuggestionFilter)
+            data_filter=_ensure_model(data_filter,ActionSuggestionFilter)
+    
+        if isinstance(data,dict):
+            data=_ensure_model(data,ActionSuggestionEdit)
         data_filter.company=self.company
+    
+        data_filter=auto_build_mongo_filter(ActionSuggestionFilter,data_filter)
 
         result = await self.collection.update_one(data_filter,{"$set":data.model_dump(exclude_defaults=True,exclude_unset=True)})
         return {"matched":result.matched_count,"modified":result.modified_count}
@@ -117,12 +122,12 @@ class ActionSuggestion():
     
     @trace
     async def adopt(self,data_filter:ActionSuggestionFilter,deadline:datetime):
-        result = await BusinessStrategy(self.request).edit_business_strategy(data_filter,{"status":"adopted","deadline_time_stamp":deadline})
+        result = await ActionSuggestion(self.request).edit_action_suggestion(data_filter,{"status":"adopted","deadline_time_stamp":deadline})
         return result
     
     @trace
     async def unadopt(self,data_filter:ActionSuggestionFilter):
-        result = await BusinessStrategy(self.request).edit_business_strategy(data_filter,{"status":"unadopted"})
+        result = await ActionSuggestion(self.request).edit_action_suggestion(data_filter,{"status":"unadopted"})
         return result
 # {
     
