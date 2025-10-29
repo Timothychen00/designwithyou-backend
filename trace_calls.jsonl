@@ -2213,3 +2213,7 @@
 {"timestamp": "2025-10-29T08:16:16.428599Z", "name": "User.save_login_record", "level": 1, "duration": 0.02943629199580755}
 {"timestamp": "2025-10-29T08:16:36.239733Z", "name": "Statistic.get_knowledge_history_analysis", "level": 0, "duration": 0.08147529199777637}
 {"timestamp": "2025-10-29T08:20:03.420478Z", "name": "Statistic.get_knowledge_history_analysis", "level": 0, "duration": 0.03878612499102019}
+{"timestamp": "2025-10-29T16:22:06.928920Z", "name": "User.login", "level": 0, "duration": 1.3608976670075208}
+{"timestamp": "2025-10-29T16:22:06.932801Z", "name": "verify_password", "level": 1, "duration": 0.5280141249968437}
+{"timestamp": "2025-10-29T16:22:06.932946Z", "name": "User.save_login_record", "level": 1, "duration": 0.03190729099151213}
+{"timestamp": "2025-10-29T16:22:15.645488Z", "name": "Statistic.group_knowledge_count", "level": 0, "duration": 0.0787268749991199}

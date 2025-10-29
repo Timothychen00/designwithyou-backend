@@ -146,9 +146,9 @@ class KnowledgeFilter(BaseFilter):
     
 class AggrestionKnowledgeFilter(BaseFilter):
     id: Optional[list[str]] = Field(None, alias="_id") # _id開頭會被忽略
-    main_categorys: Optional[list[str]] = None
-    sub_categorys: Optional[list[str]] = None
-    departments: Optional[list[str]] = None
+    main_category: Optional[list[str]] = None
+    sub_category: Optional[list[str]] = None
+    department: Optional[list[str]] = None
     created_by: Optional[list[str]] = None
     company:Optional[str]=None
     keywords: Optional[list[str]] = None
