@@ -429,7 +429,7 @@ async def embedding(request:Request,data:str,user_session=Depends(login_required
 
 @trace
 @router.post('/api/knowledge_history/filter',tags=['Statistics'])
-async def knowledge_history_filter(request:Request,filter:KnowledgeHistoryFilter,user_session=Depends(login_required(authority="admin"))):
+async def knowledge_history_filter(request:Request,filter:KnowledgeHistoryFilter,user_session=Depends(login_required(authority="normal"))):
     """
     """
     svc = KnowledgeHistory(request)
