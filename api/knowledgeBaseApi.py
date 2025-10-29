@@ -1,11 +1,11 @@
 from fastapi import APIRouter,Request,Depends,Query
-from typing import Optional
+from typing import Optional,Literal
 from icecream import ic
 import json 
 
 from schemes.aiSchemes import KnowledgeHistoryFilter,KnowledgeHistoryGroup,Background,RecordEdit
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter,GroupKnowledgeFilter
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,SubCategoryAdd,KnowledgeFilter,KnowledgeBaseCreate,KnowledgeSchemeEdit,KnowledgeSchemeSolve,AggrestionKnowledgeFilter,GroupKnowledgeFilter,ChatHistoryFilterTimeGroup
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.knowledgeModel import KnowledgeBase
 from models.companyModel import Company
@@ -504,3 +504,11 @@ async def generate_keywords(request:Request,background:Background,user_session=D
     ic(result2)
     
     return ResponseModel(message="ok", data=result[0])
+
+
+@trace
+@router.post('/api/knowledge_history/knowledge_analysis',tags=['Statistics'])
+async def get_knowledge_history_analysis(request:Request,filter:ChatHistoryFilterTimeGroup,unit:Literal['day','week','month']='day',user_session=Depends(login_required(authority="normal"))):
+    company_id=user_session['company']
+    result= await Statistic(request).get_knowledge_history_analysis(company_id,filter,unit)
+    return ResponseModel(message="ok", data=result)

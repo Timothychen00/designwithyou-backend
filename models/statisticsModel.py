@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException, Request
 from icecream import ic
+from datetime import datetime  # add this import near the top with the other imports if it's not present
 
 from errors import SettingsError,BadInputError
 from tools import _ensure_model,auto_build_mongo_filter
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse,KnowledgeHistoryFilter,KnowledgeHistoryGroup
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
 from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter,GroupKnowledgeFilter
-from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme,UserFilter
+from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme,UserFilter,LoginHistoryFilterTimeGroup
 from tools import trace
 
 class Statistic():
@@ -221,4 +222,94 @@ class Statistic():
             processed_result[i['_id']]=i['count']
         return processed_result
     
+    @trace
+    async def get_user_login_analysis(self,company_id:str,filter:LoginHistoryFilterTimeGroup|dict,unit="day"):
+        if isinstance(filter,dict):
+            filter=_ensure_model(filter,LoginHistoryFilterTimeGroup)
+            
+        tz = "Asia/Taipei"
+        filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
+        processed_filter= auto_build_mongo_filter(LoginHistoryFilterTimeGroup,filter_dict)
+        ic(processed_filter)
+        processed_filter.update({'company':company_id})
+
+        match_stage = processed_filter
+        ic(match_stage)
+        pipeline = []
+        if match_stage:
+            pipeline.append({"$match": match_stage})
+
+        pipeline += [
+        # 第一次 group：以「天 + 使用者」為 key，達到去重
+        {
+            "$group": {
+                "_id": {
+                    "day": {"$dateTrunc": {"date": "$timestamp", "unit": unit, "timezone": tz}},
+                    "username": "$username"
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$_id.day",
+                "distinct_users": {"$sum": 1}
+            }
+        },
+        {"$sort": {"_id": 1}},
+        {
+            "$project": {
+                "_id": 0,
+                "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$_id", "timezone": tz}},
+                "count": "$distinct_users"
+            }
+        }
+    ]
+
+        # Run aggregation (Motor async) and return all results
+        result = await self.db.login_history.aggregate(pipeline).to_list(length=None)
+        ic(result)
+        return result
     
+
+    @trace
+    async def get_knowledge_history_analysis(self,company_id:str,filter:LoginHistoryFilterTimeGroup|dict,unit="day"):
+        if isinstance(filter,dict):
+            filter=_ensure_model(filter,LoginHistoryFilterTimeGroup)
+            
+        tz = "Asia/Taipei"
+        filter_dict=filter.model_dump(exclude_none=True,exclude_unset=True)
+        processed_filter= auto_build_mongo_filter(LoginHistoryFilterTimeGroup,filter_dict)
+        ic(processed_filter)
+        processed_filter.update({'company':company_id})
+
+        match_stage = processed_filter
+        ic(match_stage)
+        pipeline = []
+        if match_stage:
+            pipeline.append({"$match": match_stage})
+
+        pipeline += [
+            {
+                "$group": {
+                    "_id": {
+                        "day": {"$dateTrunc": {"date": "$timestamp", "unit": unit, "timezone": tz}},
+                        "department": "$department"
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {"$sort": {"_id.day": 1, "_id.department": 1}},
+            {
+                "$project": {
+                    "_id": 0,
+                    "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$_id.day", "timezone": tz}},
+                    "department": "$_id.department",
+                    "count": 1
+                }
+            }
+        ]
+
+        # Run aggregation (Motor async) and return all results
+        result = await self.db.chat_history.aggregate(pipeline).to_list(length=None)
+        ic(result)
+        return result

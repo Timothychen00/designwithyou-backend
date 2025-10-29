@@ -53,3 +53,8 @@ class LoginHistoryFilter(BaseFilter):
     username:EmailStr =None
     company:str =None
     authority:Literal['normal','owner','admin'] = None
+    
+class LoginHistoryFilterTimeGroup(BaseFilter):
+    username:EmailStr =None
+    company:str =None
+    authority:Literal['normal','owner','admin'] = None

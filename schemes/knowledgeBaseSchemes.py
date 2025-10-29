@@ -169,3 +169,7 @@ class GroupKnowledgeFilter(BaseModel):
     sort: bool = False
     content: bool = False
     status: bool = False
+    
+class ChatHistoryFilterTimeGroup(BaseFilter):
+    type:str =None
+    company:str =None

@@ -177,6 +177,7 @@ class User():
         data=_ensure_model(user,LoginHistoryRecord)
         data_dump=data.model_dump()
         ic(data_dump)
+        
         result=await self.login_history.insert_one(data_dump)
         return result.inserted_id
     

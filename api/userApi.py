@@ -1,11 +1,12 @@
 from fastapi import APIRouter,Request,Depends,Query
+from typing import Literal
 
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from models.userModel import User
 from auth import login_required
 from models.statisticsModel import Statistic
-from schemes.userSchemes import UserFilter,LoginHistoryFilter
+from schemes.userSchemes import UserFilter,LoginHistoryFilter,LoginHistoryFilterTimeGroup
 from tools import trace
 
 router = APIRouter(prefix="/api/user",tags=['User'])
@@ -88,4 +89,12 @@ async def get_total_user_count(request:Request,active:bool=Query(False),user_ses
         result=await Statistic(request).get_active_user_count(company_id,UserFilter())
     else:
         result=await Statistic(request).get_user_count(company_id,UserFilter())
+    return ResponseModel(message="ok", data=result)
+
+
+@trace
+@router.post('/user_login_analysis',tags=['Statistics'])
+async def get_user_login_analysis(request:Request,filter:LoginHistoryFilterTimeGroup,unit:Literal['day','week','month']='day',user_session=Depends(login_required(authority="normal"))):
+    company_id=user_session['company']
+    result= await Statistic(request).get_user_login_analysis(company_id,filter,unit)
     return ResponseModel(message="ok", data=result)
