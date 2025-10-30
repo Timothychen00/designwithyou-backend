@@ -24,6 +24,7 @@ class UserRegisterPasswordPresetScheme(BaseModel):
     company:Optional[str]=""
     phone:Optional[str]=""
     role:Optional[str]="" # 角色 
+    token:Optional[str]=""
     note:Optional[str]=""
     department:Optional[list[str]] = Field(default_factory=list)
     

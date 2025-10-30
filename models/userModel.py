@@ -133,7 +133,7 @@ class User():
             
             for user in userdata:
                 user.company=company_id
-                user.password=token_generator(12),# 隨機產生密碼
+                user.password=token_generator(12)# 隨機產生密碼
                 
                 not_department=0
                 for i in user.department:
@@ -156,7 +156,7 @@ class User():
         except Exception as e:
             for id in temp_user_ids:
                 await User(self.request).delete({"_id":id})
-            raise CompanyError(str(e))
+            raise
     @trace
     async def forget(self):
         pass

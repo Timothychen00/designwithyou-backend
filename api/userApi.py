@@ -52,7 +52,7 @@ async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,t
     """
     
     company_id=user_session["company"]
-    result=await User(request).register_many(company_id,user,token=token)
+    result=await User(request).register_many(token,company_id,user)
     return ResponseModel(message=str(result))
 
 @trace
