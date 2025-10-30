@@ -148,7 +148,7 @@ class User():
                 user.token=token
                 user_id = await User(self.request).register(user)
                 temp_user_ids.append(user_id)
-                temp_users.append(user.username,user.password)
+                temp_users.append([user.username,user.password])
 
             # send email
             ic(temp_users)
