@@ -94,7 +94,7 @@ async def get_filtered_knowledge(request:Request,data_filter:AggrestionKnowledge
     user_profile = await User(request).get_user({"username":username}) # company_id
     # department
     ic(data_filter)
-    data_filter.departments = user_profile.get('department',[])
+    data_filter.department = user_profile.get('department',[])
     result = await KnowledgeBase(request).get_knowledge(data_filter,)
     return ResponseModel(message="ok", data=result)
 
