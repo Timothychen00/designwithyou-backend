@@ -148,11 +148,12 @@ class User():
                 user.token=token
                 user_id = await User(self.request).register(user)
                 temp_user_ids.append(user_id)
+                temp_users.append(user.username,user.password)
 
             # send email
             ic(temp_users)
             ic(temp_user_ids)
-            return "ok"
+            return temp_users
         except Exception as e:
             for id in temp_user_ids:
                 await User(self.request).delete({"_id":id})
