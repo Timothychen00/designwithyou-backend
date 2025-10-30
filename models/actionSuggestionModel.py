@@ -71,9 +71,10 @@ class ActionSuggestion():
         if isinstance(data,dict):
             data=_ensure_model(data,ActionSuggestionEdit)
         data_filter.company=self.company
-    
-        data_filter=auto_build_mongo_filter(ActionSuggestionFilter,data_filter)
-
+        ic(data_filter)
+        data_filter=auto_build_mongo_filter(ActionSuggestionFilter,data_filter.model_dump(exclude_unset=True))
+        ic(data_filter)
+        ic(data.model_dump(exclude_defaults=True,exclude_unset=True))
         result = await self.collection.update_one(data_filter,{"$set":data.model_dump(exclude_defaults=True,exclude_unset=True)})
         return {"matched":result.matched_count,"modified":result.modified_count}
             
