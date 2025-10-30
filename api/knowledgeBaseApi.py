@@ -118,7 +118,7 @@ async def load_preset_knowledge(request:Request,strict_mode:bool=False,count:int
 
 @trace
 @router.post("/api/knowledge_base/knowledge/request")
-async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="admin"))):
+async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_session=Depends(login_required(authority="normal"))):
     """
     建立新的知識條目 (Knowledge Item)
 

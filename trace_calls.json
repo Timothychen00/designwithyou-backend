@@ -1,0 +1,3 @@
+{"timestamp": "2025-10-30T13:22:39.876809Z", "name": "User.login", "level": 0, "duration": 1.5367874579969794}
+{"timestamp": "2025-10-30T13:22:39.877706Z", "name": "verify_password", "level": 1, "duration": 1.0452007919957396}
+{"timestamp": "2025-10-30T13:22:39.877729Z", "name": "User.save_login_record", "level": 1, "duration": 0.02421483298530802}

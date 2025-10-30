@@ -12,7 +12,7 @@ from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterP
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from schemes.settingsSchemes import SettingsUpdateScheme
 from .settingsModel import Settings
-from .aiModel import AI
+
 
 class KnowledgeBase():
     def __init__(self,request:Request):
@@ -32,6 +32,7 @@ class KnowledgeBase():
             raise SettingsError("Not logged in")
     @trace
     async def create_knowledge(self,data:KnowledgeSchemeCreate,display=False):
+        from .aiModel import AI
         if len(data.embedding_example_question)==0:
             data.embedding_example_question=await AI(self.request).embedding(data.example_question)
         ic('embedding')
@@ -207,6 +208,7 @@ class KnowledgeBase():
     async def edit_knowledge(self,filter:KnowledgeFilter,data:KnowledgeSchemeEdit):
         mongofilter=auto_build_mongo_filter(KnowledgeFilter,filter.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None))
         ic(mongofilter)
+        from .aiModel import AI
         
         data.time_stamp_last_edit= datetime.now(timezone.utc)
         # use $inc to increase the field number by specific valule

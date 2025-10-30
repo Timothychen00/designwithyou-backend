@@ -120,16 +120,16 @@ def cosine_similarity(v1, v2):
 _trace_state: ContextVar[dict[str, List[dict]]] = ContextVar("_trace_state", default=None)
 
 # local trace files (placed next to this module)
-_TRACE_LOG_PATH = os.path.join(os.path.dirname(__file__), "trace_calls.jsonl")
+_TRACE_LOG_PATH = os.path.join(os.path.dirname(__file__), "trace_calls.json")
 _TRACE_AGG_PATH = os.path.join(os.path.dirname(__file__), "trace_aggregates.json")
 _TRACE_SUMMARY_PATH = os.path.join(os.path.dirname(__file__), "trace_summary.json")
 _trace_lock = threading.Lock()
 
 def _write_trace_records(records: list[dict]):
-    """Append raw call records to a JSONL log and update aggregate summary files.
+    """Append raw call records to a JSON log and update aggregate summary files.
 
     Writes three files next to this module:
-    - trace_calls.jsonl : one JSON object per line for each recorded function call
+    - trace_calls.json : one JSON object per line for each recorded function call
     - trace_aggregates.json : mapping of function -> stats (count, total, avg, max, last_seen)
     - trace_summary.json : list of aggregated stats sorted by total desc (for quick inspection)
     """

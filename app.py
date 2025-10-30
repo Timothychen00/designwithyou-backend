@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 from schemes.utilitySchemes import CustomHTTPException,ResponseModel
 from errors import UserError, SettingsError,CompanyError,BadInputError,AIError
-from api import companyApi,knowledgeBaseApi,userApi,settingsApi,actionSuggestionApi,BusinessStrategyApi
+from api import companyApi,knowledgeBaseApi,userApi,settingsApi,actionSuggestionApi,BusinessStrategyApi,toolsApi
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 load_dotenv()
@@ -60,6 +60,7 @@ app.include_router(userApi.router)
 app.include_router(settingsApi.router)
 app.include_router(actionSuggestionApi.router)
 app.include_router(BusinessStrategyApi.router)
+app.include_router(toolsApi.router)
 
 # middleware
 app.add_middleware(
