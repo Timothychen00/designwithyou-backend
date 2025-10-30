@@ -507,10 +507,10 @@ async def generate_keywords(request:Request,background:Background,user_session=D
 
 @trace
 @router.post('/api/ai/question_suggestion',tags=['AI'])
-async def question_suggestion(request:Request,background:KnowledgeSchemeEdit,user_session=Depends(login_required(authority="admin"))):
+async def question_suggestion(request:Request,background:KnowledgeSchemeEdit,count:int=5,user_session=Depends(login_required(authority="admin"))):
     ic("in")
     
-    result=await AI(request).question_suggestion(background)
+    result=await AI(request).question_suggestion(background,count)
     #record id
     for i in range(3):
         try:
