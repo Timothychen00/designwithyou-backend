@@ -505,6 +505,24 @@ async def generate_keywords(request:Request,background:Background,user_session=D
     
     return ResponseModel(message="ok", data=result[0])
 
+@trace
+@router.post('/api/ai/question_suggestion',tags=['AI'])
+async def question_suggestion(request:Request,background:KnowledgeSchemeEdit,user_session=Depends(login_required(authority="admin"))):
+    ic("in")
+    
+    result=await AI(request).question_suggestion(background)
+    #record id
+    for i in range(3):
+        try:
+            processed_result=json.loads(result[0])
+            
+        except Exception as e:
+            ic(str(e))
+        else:
+            break
+    
+    return ResponseModel(message="ok", data=processed_result)
+
 
 @trace
 @router.post('/api/knowledge_history/knowledge_analysis',tags=['Statistics'])

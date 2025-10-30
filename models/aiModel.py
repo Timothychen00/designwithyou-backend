@@ -8,7 +8,7 @@ from errors import SettingsError,BadInputError,AIError
 from tools import _ensure_model,cosine_similarity
 from schemes.aiSchemes import RecordCreate,RecordEdit,QuestionReponse,Background
 from schemes.companySchemes import CompanyScheme,CompanyStructureListItem,CompanyStructureListItemDB,CompanyStructureSetupScheme,ContactPerson,DispenseDepartment
-from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter
+from schemes.knowledgeBaseSchemes import KnowledgeSchemeCreate,MainCategoriesCreate,MainCategoryConfig,MainCategoriesTemplate,MainCategoriesUpdateScheme,KnowledgeFilter,KnowledgeSchemeEdit
 from schemes.userSchemes import UserLoginScheme,UserRegisterScheme,UserRegisterPasswordPresetScheme
 from .userModel import User
 from .companyModel import Company
@@ -338,16 +338,38 @@ class AI():
                     return final_result,result_list[0]
             except Exception as e:
                 ic(str(e))
-                
-                
-
-                
-    @trace
-    async def generate_strategy(self):
-        pass
     
     @trace 
-    async def rewrite(self,background:Background):
+    async def question_suggestion(self,background:Background|KnowledgeSchemeEdit,count=5):
+        companydata= await Company(self.request).get_company(self.user_stamp['company'])
+        company_background= await self.generate_background_data(companydata)
+        
+        category=await KnowledgeBase(self.request).get_maincategory(True)
+        relevant = await self.vector_search(background.example_question,category,5)
+        background=json.dumps(background.model_dump(exclude_none=True,exclude_unset=True))
+        ic(background)
+        prompt=f"""
+        幫我根據這些背景內容，產生{count}個與當前問題相關，員工可能會有的疑問，並且這些要儘量避免和現有的問題重複建議補齊的相關問題
+        背景內容：
+        公司內容：
+        {company_background}
+        
+        當前知識條目：
+        {background}
+        
+        與當前知識條目最相關的知識條目:
+        {relevant}
+        
+        輸出格式：
+        ["suggestion1",""suggestion1","suggestion1","suggestion1"]
+        
+        不要有任何沒有意義的問候和開頭(要確保格式可以正確被解讀成json格式)
+        """
+        result=await self.ask_ai(prompt,"suggesting")
+        return result
+
+    @trace 
+    async def rewrite(self,background:Background|str):
         companydata= await Company(self.request).get_company(self.user_stamp['company'])
         company_background= await self.generate_background_data(companydata)
         prompt=f"""
@@ -362,6 +384,7 @@ class AI():
         """
         result=await self.ask_ai(prompt,"rewrite")
         return result
+
 
     
     @trace
