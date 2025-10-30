@@ -8,7 +8,6 @@ import os
 import json
 import argparse
 
-
 def load_summary(path: str):
     if not os.path.exists(path):
         raise FileNotFoundError(f"Summary file not found: {path}")
