@@ -299,7 +299,9 @@ class AI():
         knowledges=await KnowledgeBase(self.request).get_knowledge(KnowledgeFilter(main_category=main_categories),True)
         data=[]
         for knowledge in knowledges:
-
+            if not knowledge['embedding_example_question']:
+                continue
+            
             similarity=cosine_similarity(vector,knowledge['embedding_example_question'])
             data.append((similarity,knowledge['example_question'],str(knowledge['_id']),knowledge['example_answer']))
         

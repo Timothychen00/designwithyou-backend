@@ -99,6 +99,7 @@ class ActionSuggestion():
         if not records:
             records=[] 
         
+        ic(result)
         if result[0]['status']!='adopted' and result[0]['status']!='inprogress':
             raise BadInputError("action status is not adopted!")
 
