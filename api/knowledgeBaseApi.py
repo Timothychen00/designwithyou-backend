@@ -164,7 +164,7 @@ async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sess
         main_category=await KnowledgeBase(request).get_maincategory()
         if not main_category:
             raise StatusError("please setup main_category first")
-        ai_result=await AI(request).auto_tagging(main_category,data.example_question,user_profile)
+        ai_result=await AI(request).auto_tagging(main_category,data.example_question,extend=False)
         
         if ai_result in main_category:
             success=True
@@ -181,7 +181,7 @@ async def request_knowledge(request:Request,data:KnowledgeSchemeCreate,user_sess
         try:
             sub_category=await KnowledgeBase(request).get_subcategory(data.main_category)
 
-            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,user_profile,extend=True)
+            ai_result=await AI(request).auto_tagging(sub_category,data.example_question,extend=True)
             
             if ai_result not in sub_category:
                 await KnowledgeBase(request).add_subcategory(data.main_category,ai_result)

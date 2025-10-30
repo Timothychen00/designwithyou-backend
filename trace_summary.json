@@ -1,11 +1,11 @@
 [
   {
     "name": "AI.ask_ai",
-    "count": 110,
-    "total": 1549.0976725421306,
+    "count": 114,
+    "total": 1578.567420960152,
     "max": 88.45816341699992,
-    "last_seen": "2025-10-30T06:14:53.086078Z",
-    "avg": 14.082706114019368
+    "last_seen": "2025-10-30T12:25:31.359294Z",
+    "avg": 13.847082640001334
   },
   {
     "name": "BusinessStrategy.generate_ai_strategy",
@@ -25,11 +25,11 @@
   },
   {
     "name": "User.login",
-    "count": 221,
-    "total": 261.3560484211238,
+    "count": 224,
+    "total": 264.85627067013854,
     "max": 8.685980917000052,
-    "last_seen": "2025-10-30T11:57:18.719533Z",
-    "avg": 1.1826065539417365
+    "last_seen": "2025-10-30T12:24:20.423338Z",
+    "avg": 1.18239406549169
   },
   {
     "name": "AI.generate_knowlege",
@@ -48,6 +48,14 @@
     "avg": 16.51493220124995
   },
   {
+    "name": "AI.auto_tagging",
+    "count": 57,
+    "total": 185.06417237086544,
+    "max": 10.485243125003763,
+    "last_seen": "2025-10-30T12:25:31.359279Z",
+    "avg": 3.246739866155534
+  },
+  {
     "name": "AI.suggesting",
     "count": 7,
     "total": 156.64569366499927,
@@ -56,20 +64,12 @@
     "avg": 22.37795623785704
   },
   {
-    "name": "AI.auto_tagging",
-    "count": 51,
-    "total": 155.5942623718406,
-    "max": 10.485243125003763,
-    "last_seen": "2025-10-28T10:58:07.644230Z",
-    "avg": 3.0508678896439334
-  },
-  {
     "name": "verify_password",
-    "count": 217,
-    "total": 128.2197292203732,
+    "count": 220,
+    "total": 130.32734863538144,
     "max": 1.3968555830069818,
-    "last_seen": "2025-10-30T11:57:18.719542Z",
-    "avg": 0.5908743282044848
+    "last_seen": "2025-10-30T12:24:20.423345Z",
+    "avg": 0.5923970392517338
   },
   {
     "name": "AI.make_response",
@@ -121,11 +121,11 @@
   },
   {
     "name": "AI.create_record",
-    "count": 199,
-    "total": 18.633494045969144,
+    "count": 203,
+    "total": 18.765436627994802,
     "max": 0.5818250830000125,
-    "last_seen": "2025-10-30T06:14:53.086082Z",
-    "avg": 0.09363564847220675
+    "last_seen": "2025-10-30T12:25:31.359300Z",
+    "avg": 0.09244057452214188
   },
   {
     "name": "BusinessStrategy.strategy_selected_questions",
@@ -137,19 +137,19 @@
   },
   {
     "name": "User.get_user",
-    "count": 244,
-    "total": 9.816001343940513,
+    "count": 251,
+    "total": 9.943043843922567,
     "max": 0.47833024999999907,
-    "last_seen": "2025-10-30T06:14:53.086086Z",
-    "avg": 0.04022951370467424
+    "last_seen": "2025-10-30T12:25:31.359306Z",
+    "avg": 0.03961372049371541
   },
   {
     "name": "User.save_login_record",
-    "count": 211,
-    "total": 8.28969857730101,
+    "count": 214,
+    "total": 8.363260327304147,
     "max": 0.5977599170000758,
-    "last_seen": "2025-10-30T11:57:18.719546Z",
-    "avg": 0.03928767098246924
+    "last_seen": "2025-10-30T12:24:20.423349Z",
+    "avg": 0.039080655735066104
   },
   {
     "name": "Statistic.count_maincategory_history",
@@ -161,19 +161,19 @@
   },
   {
     "name": "KnowledgeBase.create_knowledge",
-    "count": 77,
-    "total": 3.2389995399898908,
+    "count": 78,
+    "total": 3.3401424149960803,
     "max": 0.5664541670003018,
-    "last_seen": "2025-10-25T01:47:08.994188Z",
-    "avg": 0.0420649290907778
+    "last_seen": "2025-10-30T12:25:31.467087Z",
+    "avg": 0.0428223386537959
   },
   {
     "name": "Settings.get_settings",
-    "count": 84,
-    "total": 3.0648615420608962,
+    "count": 91,
+    "total": 3.1759892910008034,
     "max": 0.3305317079999668,
-    "last_seen": "2025-10-30T06:14:53.086056Z",
-    "avg": 0.03648644692929638
+    "last_seen": "2025-10-30T12:25:26.052571Z",
+    "avg": 0.034900981219789046
   },
   {
     "name": "Statistic.count_knowledge_history",
@@ -272,6 +272,14 @@
     "avg": 0.042577083001055546
   },
   {
+    "name": "KnowledgeBase.get_maincategory",
+    "count": 10,
+    "total": 0.3472782488533994,
+    "max": 0.047977458001696505,
+    "last_seen": "2025-10-30T12:25:01.761401Z",
+    "avg": 0.034727824885339945
+  },
+  {
     "name": "ActionSuggestion.unadopt",
     "count": 11,
     "total": 0.316471375990659,
@@ -296,14 +304,6 @@
     "avg": 0.05386779999826104
   },
   {
-    "name": "KnowledgeBase.get_maincategory",
-    "count": 7,
-    "total": 0.2625489988276968,
-    "max": 0.047977458001696505,
-    "last_seen": "2025-10-30T06:14:53.086052Z",
-    "avg": 0.03750699983252811
-  },
-  {
     "name": "ActionSuggestion.edit_action_suggestion",
     "count": 12,
     "total": 0.2561762909972458,
@@ -320,20 +320,20 @@
     "avg": 0.023779555444990465
   },
   {
+    "name": "KnowledgeBase.get_subcategory",
+    "count": 9,
+    "total": 0.17486403993098065,
+    "max": 0.036419832962565124,
+    "last_seen": "2025-10-30T12:25:26.052555Z",
+    "avg": 0.01942933777010896
+  },
+  {
     "name": "ActionSuggestion.reply",
     "count": 5,
     "total": 0.15506454298156314,
     "max": 0.04831304197432473,
     "last_seen": "2025-10-30T11:47:20.830242Z",
     "avg": 0.031012908596312627
-  },
-  {
-    "name": "KnowledgeBase.get_subcategory",
-    "count": 6,
-    "total": 0.12126178992912173,
-    "max": 0.036419832962565124,
-    "last_seen": "2025-10-17T12:02:45.697242Z",
-    "avg": 0.020210298321520288
   },
   {
     "name": "Statistic.get_knowledge_history_analysis",
@@ -345,11 +345,19 @@
   },
   {
     "name": "KnowledgeBase.add_subcategory",
-    "count": 2,
-    "total": 0.06657454196829349,
-    "max": 0.033780124969780445,
-    "last_seen": "2025-10-17T12:02:40.294623Z",
-    "avg": 0.033287270984146744
+    "count": 3,
+    "total": 0.10386116697918624,
+    "max": 0.03728662501089275,
+    "last_seen": "2025-10-30T12:25:21.316143Z",
+    "avg": 0.03462038899306208
+  },
+  {
+    "name": "Settings.update_settings",
+    "count": 3,
+    "total": 0.05732687603449449,
+    "max": 0.02115975000197068,
+    "last_seen": "2025-10-30T12:25:21.316162Z",
+    "avg": 0.01910895867816483
   },
   {
     "name": "KnowledgeHistory.get_knowledge_history",
@@ -374,14 +382,6 @@
     "max": 0.02002783300122246,
     "last_seen": "2025-10-27T17:17:42.334282Z",
     "avg": 0.01895275000060792
-  },
-  {
-    "name": "Settings.update_settings",
-    "count": 2,
-    "total": 0.03616712603252381,
-    "max": 0.01951329200528562,
-    "last_seen": "2025-10-17T12:02:40.294638Z",
-    "avg": 0.018083563016261905
   },
   {
     "name": "KnowledgeBase.edit_knowledge",
