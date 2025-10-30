@@ -44,7 +44,7 @@ async def delete_user(username:str,request:Request):# fastapi的endpoint名稱�
 
 @trace
 @router.post("/register_many",response_model=ResponseModel)
-async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,user_session=Depends(login_required(authority="normal"))):# fastapi的endpoint名稱是可以重複的，因為綁定的ref的位置而不是名稱（不像是flask）
+async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,token:str,user_session=Depends(login_required(authority="normal"))):# fastapi的endpoint名稱是可以重複的，因為綁定的ref的位置而不是名稱（不像是flask）
     """
         for Step5
         
@@ -52,7 +52,7 @@ async def register(user:list[UserRegisterPasswordPresetScheme],request:Request,u
     """
     
     company_id=user_session["company"]
-    result=await User(request).register_many(company_id,user)
+    result=await User(request).register_many(company_id,user,token=token)
     return ResponseModel(message=str(result))
 
 @trace

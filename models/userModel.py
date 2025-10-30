@@ -122,7 +122,7 @@ class User():
                 ic(result)
                 return result.inserted_id
     @trace
-    async def register_many(self,company_id:str,userdata:list[UserRegisterPasswordPresetScheme]):
+    async def register_many(self,token,company_id:str,userdata:list[UserRegisterPasswordPresetScheme]):
         # 要補之後針對departments的資料格式進行篩選
         
         # create accoutnsa
@@ -135,9 +135,17 @@ class User():
                 user.company=company_id
                 user.password=token_generator(12),# 隨機產生密碼
                 
-                if user.department not in departments:
+                not_department=0
+                for i in user.department:
+                    if i not in departments:
+                        not_department+=1
+                    
+                ic(not_department)
+                if not_department:
                     raise BadInputError("User Department data error, please check and try again.")
                 
+                
+                user.token=token
                 user_id = await User(self.request).register(user)
                 temp_user_ids.append(user_id)
 
