@@ -25,11 +25,11 @@
   },
   {
     "name": "User.login",
-    "count": 209,
-    "total": 249.4709058791385,
+    "count": 214,
+    "total": 255.6910135871193,
     "max": 8.685980917000052,
-    "last_seen": "2025-10-30T06:14:31.555930Z",
-    "avg": 1.1936406979863088
+    "last_seen": "2025-10-30T11:47:18.924204Z",
+    "avg": 1.1948178205005575
   },
   {
     "name": "AI.generate_knowlege",
@@ -65,11 +65,11 @@
   },
   {
     "name": "verify_password",
-    "count": 205,
-    "total": 121.06196325836436,
+    "count": 210,
+    "total": 124.71969150937593,
     "max": 1.3968555830069818,
-    "last_seen": "2025-10-30T06:14:31.555940Z",
-    "avg": 0.5905461622359237
+    "last_seen": "2025-10-30T11:47:18.924212Z",
+    "avg": 0.5939032929017901
   },
   {
     "name": "AI.make_response",
@@ -145,11 +145,11 @@
   },
   {
     "name": "User.save_login_record",
-    "count": 199,
-    "total": 7.990647410265069,
+    "count": 204,
+    "total": 8.110866536317758,
     "max": 0.5977599170000758,
-    "last_seen": "2025-10-30T06:14:31.555945Z",
-    "avg": 0.04015400708675914
+    "last_seen": "2025-10-30T11:47:18.924216Z",
+    "avg": 0.039759149687832146
   },
   {
     "name": "Statistic.count_maincategory_history",
@@ -272,6 +272,14 @@
     "avg": 0.042577083001055546
   },
   {
+    "name": "ActionSuggestion.get_action_suggestion",
+    "count": 10,
+    "total": 0.27627995905641,
+    "max": 0.05327916704118252,
+    "last_seen": "2025-10-30T11:47:20.830249Z",
+    "avg": 0.027627995905641002
+  },
+  {
     "name": "BusinessStrategy.get_business_strategy",
     "count": 5,
     "total": 0.2693389999913052,
@@ -296,12 +304,12 @@
     "avg": 0.023779555444990465
   },
   {
-    "name": "ActionSuggestion.get_action_suggestion",
+    "name": "ActionSuggestion.reply",
     "count": 5,
-    "total": 0.1474379990977468,
-    "max": 0.05327916704118252,
-    "last_seen": "2025-10-22T18:40:14.532732Z",
-    "avg": 0.02948759981954936
+    "total": 0.15506454298156314,
+    "max": 0.04831304197432473,
+    "last_seen": "2025-10-30T11:47:20.830242Z",
+    "avg": 0.031012908596312627
   },
   {
     "name": "ActionSuggestion.unadopt",
@@ -328,20 +336,20 @@
     "avg": 0.06013070849439828
   },
   {
+    "name": "ActionSuggestion.edit_action_suggestion",
+    "count": 6,
+    "total": 0.08553925004525809,
+    "max": 0.0371865830020397,
+    "last_seen": "2025-10-30T11:47:20.830253Z",
+    "avg": 0.01425654167420968
+  },
+  {
     "name": "KnowledgeBase.add_subcategory",
     "count": 2,
     "total": 0.06657454196829349,
     "max": 0.033780124969780445,
     "last_seen": "2025-10-17T12:02:40.294623Z",
     "avg": 0.033287270984146744
-  },
-  {
-    "name": "ActionSuggestion.edit_action_suggestion",
-    "count": 4,
-    "total": 0.06310195801052032,
-    "max": 0.0371865830020397,
-    "last_seen": "2025-10-28T09:11:01.702834Z",
-    "avg": 0.01577548950263008
   },
   {
     "name": "KnowledgeHistory.get_knowledge_history",

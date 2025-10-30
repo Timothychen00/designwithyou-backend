@@ -88,9 +88,9 @@ class ActionSuggestion():
     @trace 
     async def reply(self,filter:ActionSuggestionFilter,user_content:str):
         result=await self.get_action_suggestion(filter)
-        records=result['records']
+        records=result[0]['records']
         temp_record = ActionSuggestionReply(
-            user=self.user_stamp['username'],
+            username=self.user_stamp['username'],
             authority=self.user_stamp['authority'],
             content=user_content
         )
@@ -98,7 +98,7 @@ class ActionSuggestion():
         if not records:
             records=[] 
         
-        if result['status']!='adopted' and result['status']!='inprogress':
+        if result[0]['status']!='adopted' and result[0]['status']!='inprogress':
             raise BadInputError("action status is not adopted!")
 
         updated_dict={}
