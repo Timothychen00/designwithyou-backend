@@ -21,9 +21,11 @@ class KnowledgeBase():
         self.knowledge = db.knowledge
         self.company = ""
         self.request=request
+        self.user_stamp={}
         
         if 'login' in self.request.session:
             self.company=self.request.session['login'].get('company','')
+            self.user_stamp=self.request.session['login']
             ic(self.company)
             if self.company=='':
                 raise SettingsError("No Company data")
@@ -194,6 +196,14 @@ class KnowledgeBase():
     async def delete_knowledge(self,knowledge_id):
         knowledge_id=ObjectId(knowledge_id)
         return await self.knowledge.delete_many({"_id":knowledge_id})
+    
+    @trace
+    async def delete_knowledge_by_filter(self,filter:KnowledgeFilter):
+        mongofilter=auto_build_mongo_filter(KnowledgeFilter,filter.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None))
+        mongofilter['company']=self.company
+        result = await self.knowledge.delete_many(mongofilter)
+        return {"deleted_count": result.deleted_count}
+    
     @trace
     async def solve_knowledge(self,filter:KnowledgeFilter,data:KnowledgeSchemeSolve):
         mongofilter=auto_build_mongo_filter(KnowledgeFilter,filter.model_dump(exclude_unset=True,exclude_defaults=True,exclude=None))

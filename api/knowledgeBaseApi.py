@@ -224,6 +224,14 @@ async def edit_knowledge(request:Request,filter:KnowledgeFilter,data:KnowledgeSc
     return ResponseModel(message="ok", data=result)
 
 @trace
+@router.delete('/api/knowledge_base/knowledge')
+async def delete_knowledge(request:Request,filter:KnowledgeFilter,user_session=Depends(login_required(authority="admin"))):
+    # department
+    ic(filter)
+    result= await KnowledgeBase(request).delete_knowledge_by_filter(filter)
+    return ResponseModel(message="ok", data=result)
+
+@trace
 @router.get('/api/knowledge_base/ask')
 async def ask(request:Request,data:str,user_session=Depends(login_required(authority="normal"))):
     company_id=user_session['company']

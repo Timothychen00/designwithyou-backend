@@ -17,6 +17,7 @@ openai = "*"
 numpy = "*"
 bcrypt = "==3.2.2"
 fastapi-profiler = "*"
+locust = "*"
 
 [dev-packages]
 
