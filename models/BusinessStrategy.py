@@ -110,6 +110,7 @@ class BusinessStrategy():
             main_category=result[0]
             ic(current_settings)
             current_category=current_settings['category']
+            ic(result[0])
             if not result[0] in current_category:
                 raise BadInputError("main_category not exist")
             
@@ -169,8 +170,7 @@ class BusinessStrategy():
             for i in action_suggestion_ids:
                 await ActionSuggestion(self.request).delete_action_suggestion(ActionSuggestionFilter(_id=i))
             ic('actions deleted!')
-            
-            raise BusinessStrategyError(str(e)) from e
+            raise 
         
     @trace
     async def strategy_selected_questions(self,strategy_type:str)->str:
@@ -247,7 +247,7 @@ class BusinessStrategy():
             target_docs = await KnowledgeBase(self.request).get_knowledge(AggrestionKnowledgeFilter(_id=ids),mask=knowledge_data_mask)
             ic(target_docs)
             
-            if len(target_categorys)==1:
+            if len(target_categorys)>1:
                 target_categorys=target_categorys[0]
             return target_categorys,target_docs
 
