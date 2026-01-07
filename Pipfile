@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 flask = "*"
 fastapi = "*"
-uvicorn = {extras = ["standard"], version = "*"}
 motor = {extras = ["srv"], version = "*"}
 passlib = {extras = ["bcrypt"], version = "*"}
 icecream = "*"
@@ -18,6 +17,8 @@ numpy = "*"
 bcrypt = "==3.2.2"
 fastapi-profiler = "*"
 locust = "*"
+uvicorn = {extras = ["standard"], version = "*"}
+gunicorn = "*"
 
 [dev-packages]
 

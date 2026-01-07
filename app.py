@@ -36,8 +36,6 @@ async def lifespan(app: FastAPI):
     if os.environ['MODE'] == 'local':
         connection_string = "mongodb://localhost:27017/"
         
-        
-
     # MongoDB Agent 
     client = AsyncIOMotorClient(connection_string)
     app.state.db_client = client
